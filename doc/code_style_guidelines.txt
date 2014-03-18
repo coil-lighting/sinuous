@@ -1,0 +1,59 @@
+Coding Guidelines (proposed)
+
+TODO: edit and format this
+
+---
+
+ I'd like to propose four coding guidelines. If you don't already understand why these are required, I can explain, or Google can:
+
+- No global variables or global allocations, except of course for the root context object of a running application. No threadlocals, either. Context is to be injected in function params.
+
+- We write in either a functional style, or in a functionally inspired object-oriented style. In other words, no function/method should have side effects; a function or method should act only on its inputs and return its outputs. Two exceptions: 1) A method-like function considers self as one of its inputs and outputs. But don't abuse this; *strictly* OOP APIs turn out to be very limiting; their bits are hard to compose and reuse because self starts acting almost like a pesky global variable that allows methods both to have sneaky side effects and to expect  their collaborators to modify their shared context in occult ways. A smart mix of OO and functional styles is better. 2) At the outer IO boundaries of the system, of course there will be side effects and contextual input smuggling, because we need to read or mutate the state of the underlying machine in order to interact with devices in the real world.
+
+- Eschew deep, concrete inheritance hierarchies. Prefer composition over inheritance. To this end, master Rust's algebraic type system. Prefer coding to interfaces or protocols, not classes, across modular boundaries... within reason.
+
+- Document everything that's a public function, attribute, or variable. Document every private function that's not very simple and very short. There's no need to recapitulate function signatures in docstrings; focus on usage, insight, and design intent. Use the Rust standard docstring format.
+
+Happily, the rest of my favorite coding stadards appear to be enforced or implemented in the language itself.
+
+---
+
+> A very small style question: do you prefer
+> fn foo(bar: int) -> int {
+>     bar*bar
+> or
+>
+> fn foo(bar: int) -> int
+> {
+>     bar*bar
+
+Always the former. Without cramming multiple instructions into a single line, please keep it compact. Sticking a { on a line all its own is a waste of precious vertical real estate. Plus, hitting { and return (and maybe tab) millions of extra times leads to RSI.
+
+The rust language source code itself seems to prefer the former, for example:
+
+pub fn is_whitespace(c: char) -> bool {
+    // As an optimization ASCII whitespace characters are checked separately
+    c == ' '
+        || ('\x09' <= c && c <= '\x0d')
+        || property::White_Space(c)
+}
+
+Personally, I favor languages with significant whitespace indentation instead of curlies, but that's just a religious preference. There are advantages to both ways, and it's not an important part of language design.
+
+---
+
+In general, I would suggest that where in doubt about style or formatting, look around the Rust compiler source for examples. However, I am non-dogmatic about formatting. Sometimes, for special cases, creative formatting can really pay off. This is especially true of functional languages, of which rust is a close cousin, and the curly braces make it easier to pull off without writing brittle code.
+
+Eventually the Rust community will close ranks around a single style standard, which we can accept or reject as we like.
+
+---
+
+Oh yes, I've got one more coding guideline to propose: 80 character limit per line, subject to *reasonable exceptions.*
+
+i.e. a tiny overhang is fine, just don't let it happen too often. Also, a modest overhang which prevents the rampant insertion of backslashes into string literals is okay.
+
+I always set a visible 80 column margin marker in Sublime so I can eyeball this.
+
+The 80 columns do not include the end of line character; we're talking 80 visible columns. With \n that's 81 chars.
+
+The purpose for this, aside from conforming to the industry standard, is to make it easy to display three files legibly side by side on the screen without horizontal scrolling.
