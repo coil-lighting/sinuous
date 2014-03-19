@@ -11,6 +11,10 @@
 // It compiled under 0.9. Doesn't yet under 0.10-pre, thanks to changes to 
 // hashmap.
 
+// # Comments that look like this are just copied verbatim from the Ruby version.
+// # They do not necessarily pertain to this Rust version. Just for reference
+// # while I try to port this.
+
 extern crate collections;
 
 use std::f64;
@@ -19,11 +23,17 @@ use collections::HashMap;
 
 // using enums as unions for now, hopefully this is ok. TODO: check memory layout
 
+// Hypothesis: devices' descriptions are trees of ProfileElements, and this will
+// suffice to describe everything from simple, 1 dimensional, nonmodal 
+// attributes like a dimmer channel to complex, multidimensional, modal 
+// attribute clusters such as mspeed-smoothed continuous litho wheel angle.
 enum ProfileElement {
-    Profile(Profile),
-    Attribute(Attribute),
+    Profile(Profile), // branch node
+    Attribute(Attribute), // leaf node
 }
 
+// Topology descriptors will describe the parametric range for an attribute's
+// value.
 // TODO determine whether we could use the topo types themselves as values in
 // the topology array.
 // TODO formally impose ranges using constraints from the type system? 
@@ -75,6 +85,8 @@ enum Topo {
     UndefinedTopo,
 }
 
+// Named subtypes for the primitive storage representing the numeric value for
+// a Device Attribute's instance.
 // TODO: constrain according to notes in topo
 // TODO: determine wheter we can actually imply topo through default values' types
 enum AttributeValue {
@@ -91,8 +103,10 @@ enum AttributeValue {
     UndefinedValue(()),
 }
 
+// TODO figure out how Rust wants us to associate functions directly with types.
+// No need to pay the price for a hash lookup on static constant associations.
 enum AttributeType {
-    // name                     *dmx* renderer
+    // name                     *dmx* renderer (old Ruby style map)
     ModalParent          ,// => LrenderDMXModalParent,
     IndexVirtual         ,// => LrenderDMXVirtual,
     Cluster              ,// => LrenderDMXCluster,
@@ -111,7 +125,6 @@ enum AttributeType {
     SpinBipolar2Ch       ,// LrenderDMXSpinBipolar2ChWithRange,
     //TODO: :doubleArrayBipolarInterlaced => :renderDMXDoubleArrayBipolarBigEndianInterlaced,
 }
-
 
 // # dmx_offset - Specifies insertion order within the serialized output.
 // # For DMX, this specifies byte offset (AKA channel offset) within the
@@ -348,12 +361,18 @@ struct DevicePatch {
 //     - these are managed by DevicePatches.
 // 3) A logical device which is part of the scenegraph. Maybe 'SceneDevice'?
 
-
+// A device is an actual instance of a device. A device is described by its
+// Profile tree.
 struct Device {
     profile: Profile,
     name: ~str,
     nickname: ~str, // shorter, to save space (defaults to name, truncated)
     patches: ~[DevicePatch],
+
+    // Major TODO: Fit AttributeValues in here. Should they be flat or tree?
+    // Probably a tree whose nodes refer to Attributes in the Profile, since at 
+    // render time we need to traverse a modal decision tree, and we don't want 
+    // to do reverse lookups or hash lookups in the render loop.
 }
 
 fn main() {
