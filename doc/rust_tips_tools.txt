@@ -1,0 +1,4 @@
+nm command line utility - list symbols from object file
+i.e. rust test fizzbuzz.rs
+nm -C fizzbuzztest~ | grep test
+
