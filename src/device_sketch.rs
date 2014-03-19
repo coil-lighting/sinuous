@@ -11,9 +11,11 @@
 // It compiled under 0.9. Doesn't yet under 0.10-pre, thanks to changes to 
 // hashmap.
 
+extern crate collections;
+
 use std::f64;
 use std::u64;
-use std::hashmap::HashMap;
+use collections::HashMap;
 
 // using enums as unions for now, hopefully this is ok. TODO: check memory layout
 
