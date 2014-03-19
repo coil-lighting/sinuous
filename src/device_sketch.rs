@@ -25,30 +25,53 @@ enum ProfileElement {
 }
 
 // TODO determine whether we could use the topo types themselves as values in
-// the topology array
+// the topology array.
+// TODO formally impose ranges using constraints from the type system? 
+// (Is this even possible in Rust?)
 enum Topo {
-    // [0.0,1.0] Naturally continuous, values bounded, interpolation recommended (e.g. dimmer).
+    // Naturally continuous, values bounded, interpolation recommended.
+    // Range: [0.0,1.0]
+    // Example: dimmer
     VectorEuclidianUnipolar=0,
 
-    // [-1.0,1.0] (e.g. XY position)
+    // Naturally continuous, values bounded, interpolation recommended.
+    // Range: [-1.0,1.0]
+    // Example: X- or Y-position on a bounded pivot or linear track
     VectorEuclidianBipolar,
 
-    // [0.0,1.0] Naturally continuous, values wrap, interpolation recommended (e.g. angle of rotation).
+    // Naturally continuous, values wrap, interpolation recommended.
+    // Range: [0.0,1.0] 
+    // Example: angle of rotation
     VectorToroidalUnipolar,
 
-    // [-1.0,1.0] Might come in handy if there is a natural neutral '0' point in a torus -- EXPERIMENTAL
+    // Naturally continuous, values wrap, interpolation recommended, with a
+    // natural center point at 0.
+    // Range: [-1.0,1.0] 
+    // Example: fully commutated pan or tilt
     VectorToroidalBipolar,
 
-    // Int indexed from 0. Naturally discontinuous, values wrap, interpolation optionally mechanically/logically meaningful but discouraged (e.g. litho index).
+    // Naturally discontinuous, values wrap, interpolation conceivably
+    // mechanically/logically meaningful, but aesthetically discouraged.
+    // Range: Int indexed from 0
+    // Example: litho index
     DiscreteRing,
 
-    // Int indexed from 0. Naturally discontinuous, values bounded, interpolation optionally mechanically/logically meaningful but discouraged (e.g. linear slide tray index).
+    // Naturally discontinuous, values bounded, interpolation conceivably 
+    // mechanically/logically meaningful, but aesthetically discouraged.
+    // Range: Int indexed from 0
+    // Example: linear 35mm slide tray index
     DiscreteArray,
 
-    // Int indexed from 0. Naturally discontinuous, values bounded, interpolation mechanically/logically meaningless and therefore discouraged (e.g. color wheel mode).
+    // Naturally discontinuous, values bounded, interpolation 
+    // mechanically/logically inconceivable and therefore forbidden.
+    // Range: Int indexed from 0
+    // Example: color wheel mode
     DiscreteSet,
 
-    // Topology is undefined, probably because this is a (virtual?) cluster parent.
+    // Topology is undefined, probably because this is a (virtual?) "cluster" 
+    // parent node. TODO: expand on this, accounting for the new device model
+    // Range: null
+    // Example: TODO
     UndefinedTopo,
 }
 
