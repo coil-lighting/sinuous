@@ -1,51 +1,40 @@
+
 // pattern 1 is five sequential integers.
 // has_pattern1 returns a tuple of a boolean that says if the pattern was found, and a slice of data containing the pattern
 // in hindsight, a more Rust-idiomatic way to write this function is to have it return Option<&[int]> and match on that.  Unimportant.
-fn has_pattern1<'life>(data: &'life[int]) -> (bool, &'life[int]) {
-
-    let mut has_seq = false;
-
-    let mut seq: &[int] = &[];
-
+fn has_pattern1<'life>(data: &'life[int]) -> Option<&'life[int]> {
 
     // data.windows(n) returns an iterator over data, iterating over a slice of data of length n
     // so each for loop iteration, set_of_five is a &[int] of length five starting at data[0] and incrementing by one each loop.
     for set_of_five in data.windows(5) {
         // if this is the pattern we're looking for:
         if is_seq_ascend(set_of_five) {
-            has_seq = true;
 
-            seq = set_of_five;
-            break;
+            return Some(set_of_five);
+
         }
     }
 
-    (has_seq, seq)
+    None
 }
 
 // pattern 2 is five descending-sequential integers.
 // has_pattern2 returns a tuple of a boolean that says if the pattern was found, and a slice of data containing the pattern
 // in hindsight, a more Rust-idiomatic way to write this function is to have it return Option<&[int]> and match on that.  Unimportant.
-fn has_pattern2<'life>(data: &'life[int]) -> (bool, &'life[int]) {
-
-    let mut has_seq = false;
-
-    let mut seq: &[int] = &[];
-
+fn has_pattern2<'life>(data: &'life[int]) -> Option<&'life[int]> {
 
     // data.windows(n) returns an iterator over data, iterating over a slice of data of length n
     // so each for loop iteration, set_of_five is a &[int] of length five starting at data[0] and incrementing by one each loop.
     for set_of_five in data.windows(5) {
         // if this is the pattern we're looking for:
         if is_seq_descend(set_of_five) {
-            has_seq = true;
 
-            seq = set_of_five;
-            break;
+            return Some(set_of_five);
+
         }
     }
 
-    (has_seq, seq)
+    None
 }
 
 
@@ -68,17 +57,17 @@ fn main() {
 
     if match has_pattern1(data1) {
         // if we found pattern 1, set found_pattern and exit from out if/else if/else block
-        (has_pat, pat) if has_pat => {found_pattern = pat; true},
+        Some(pat) => {found_pattern = pat; true},
 
         // if we didn't find pattern 2, this if block was not executed and we move to the next else if clause
-        _ => { false }
+        None => { false }
     } { println!("found pattern 1"); } // this block executes and found_pattern is pattern 1
     else if match has_pattern2(data1) { // this match expression does not execute
         // if we found pattern 2, set found_pattern and exit from if/else if/else block
-        (has_pat, pat) if has_pat => {found_pattern = pat; true},
+        Some(pat) => {found_pattern = pat; true},
 
         // if we didn't find pattern 2, this if block was not executed and we move to the next else if clause
-        _ => { false }
+        None => { false }
      } { println!("found pattern 2"); } // this block does not execture
     else {
         found_pattern = &[]; // this block does not execute
@@ -99,14 +88,14 @@ fn main() {
 
     if match has_pattern1(data2) {
         // if we found pattern 1, set found_pattern and exit from out if/else if/else block
-        (has_pat, pat) if has_pat => {found_pattern2 = pat; true},
+        Some(pat) => {found_pattern2 = pat; true},
 
         // if we didn't find pattern 2, this if block was not executed and we move to the next else if clause
-        _ => { false }
+        None => { false }
     } { println!("found pattern 1"); } // this block executes and found_pattern is pattern 1
     else if match has_pattern2(data2) { // this match expression does not execute
         // if we found pattern 2, set found_pattern and exit from if/else if/else block
-        (has_pat, pat) if has_pat => {found_pattern2 = pat; true},
+        Some(pat) => {found_pattern2 = pat; true},
 
         // if we didn't find pattern 2, this if block was not executed and we move to the next else if clause
         _ => { false }
