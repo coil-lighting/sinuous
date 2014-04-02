@@ -56,7 +56,7 @@
 - (void) setDevicePath: (NSString*) dev {
 	if(_devicePath != dev) {
 		[_devicePath release]; // FIXME not perfectly thread-safe w.r.t. _threadStart. beware.
-		_devicePath=[dev retain];	
+		_devicePath=[dev retain];
 	}
 }
 
@@ -68,7 +68,7 @@
 	_dmx[dmxChannel+1] = value;
 }
 
-// FIXME templatize this to factor out common code between this and DMXOutPort	
+// FIXME templatize this to factor out common code between this and DMXOutPort
 - (void)sendDmx:(unsigned)dmxChannel floatValue:(float)value {
 	if(dmxChannel >= DMX_LEN) {
 		NSLog(@"sendDmx: DMX channel out of range. You said channel %i = %f",dmxChannel,value);
@@ -84,7 +84,7 @@
 		intVal = 0;
 	else if(intVal > 255)
 		intVal = 255;
-	
+
 	_dmx[dmxChannel+1] = intVal;
 }
 
@@ -98,21 +98,11 @@
 - (void) renderFrame: (NSArray*) channels {
 	// Optimization candidate. Use CFArray, CFNumber or NSDATA if possible for fast access.
 	// ...or just grab C array out of channels?
-	unsigned len=[channels count]; // shouldn't need to check this. it's TEMP-SANITY
-	if(len != 512) {
-		// TEMP-SANITY
-		[NSException raise: NSGenericException format: @"Channels len should be 512, not %i", len];
-	}
-	
+
 	for(unsigned dmxChannel=0; dmxChannel<len; dmxChannel++) {
 		NSNumber* level = [channels objectAtIndex: dmxChannel];
-		if(![level respondsToSelector: @selector(unsignedCharValue)]) {
-			// TEMP-SANITY
-			[NSException raise: NSGenericException format: @"This class doesn't look like an NSNumber: %@", [level class]];
-		}
 		unsigned char val = [level unsignedCharValue];
 		_dmx[dmxChannel+1] = val;
-		//NSLog(@"level[%i]: %i",dmxChannel,_dmx[dmxChannel+1]); // TEMP
 	}
 	if(_debug) {
 		NSLog([self stateToString: _dmx]);
