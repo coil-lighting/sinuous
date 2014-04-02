@@ -2,7 +2,7 @@ Sinuous and Libsinuous:
 Software for orchestrating the optical, mechanical, and graphical behaviors of 
 machines. 
 
-Copyright (c) 2014 Michael Bissell
+Copyright (c) 2014 Michael Bissell, Chris Macklin
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
