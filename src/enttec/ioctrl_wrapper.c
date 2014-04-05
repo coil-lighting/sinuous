@@ -2,6 +2,7 @@
 #include <errno.h>
 #include <sys/termios.h>
 #include <sys/ioctl.h>
+#include <sys/fcntl.h>
 
 
 // create the phantom type interface for termios
@@ -29,6 +30,11 @@ struct termios *clone_termios(struct termios *to_clone) {
     return the_copy;
 }
 
+// wrapper on open file
+int open_port_file(char *path) {
+    return open(path, O_WRONLY | O_NOCTTY | O_NONBLOCK );
+}
+
 
 // wrappers on ioctrl functions
 
@@ -50,11 +56,11 @@ int tcflush_io(int fd) {
 // set options on this termios object
 void set_options_enttec(struct termios *options) {
 
-    *options.c_cflag = (CS8 | CSTOPB | CLOCAL | CREAD);
-    *options.c_lflag &= ~(ICANON | ECHO | ECHOE | ISIG);
-    *options.c_oflag &= ~OPOST;
-    *options.c_cc[ VMIN ] = 1;
-    *options.c_cc[ VTIME ] = 0;
+    (*options).c_cflag = (CS8 | CSTOPB | CLOCAL | CREAD);
+    (*options).c_lflag &= ~(ICANON | ECHO | ECHOE | ISIG);
+    (*options).c_oflag &= ~OPOST;
+    (*options).c_cc[ VMIN ] = 1;
+    (*options).c_cc[ VTIME ] = 0;
 
 }
 

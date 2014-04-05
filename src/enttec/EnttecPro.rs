@@ -1,9 +1,11 @@
+#[feature(phase)];
+#[phase(syntax, link)] extern crate log;
 extern crate native;
 use native::io::file::FileDesc;
 use std::io::IoError;
 use std::c_str::CString;
 
-use std::libc::{c_int};
+use std::libc::{c_int,c_char};
 
 
 // declare any static parameters
@@ -11,8 +13,9 @@ static DMX_LEN: uint = 512;
 static DMX_DATA_LEN: uint = 513;
 
 // import our wrappered C interface
-#[link(name = "ioctrl_wrapper")]
+#[link(name = "ioctrl")]
 extern {
+	fn open_port_file(path: *c_char) -> c_int;
 	fn ioctrl_tiocexcl(fd: c_int) ->  c_int;
 	fn tcgetattr(fildes: c_int, termios_p: *mut TermiosPtr) -> c_int;
 	fn new_termios() -> *mut TermiosPtr;
@@ -30,7 +33,7 @@ enum TermiosPtr {}
 // a Termios holds a pointer to the C struct
 // Must never instantiate this except by using Termios::new() and others
 struct Termios {
-	target: *TermiosPtr
+	target: *mut TermiosPtr
 }
 
 impl Termios {
@@ -45,7 +48,7 @@ impl Termios {
 
 // clone a Termios by calling the C function to allocate a new one and copy
 impl Clone for Termios {
-	fn clone(&mut self) -> Termios {
+	fn clone(&self) -> Termios {
 		unsafe { Termios{target: clone_termios(self.target)} }
 	}
 }
@@ -59,9 +62,23 @@ impl Drop for Termios {
 
 // "safe" interface to C functions
 
+// open a port file using the C interface
+fn open_file(path: &str) -> Option<FileDesc> {
+
+	let fd = unsafe {open_port_file(path.to_c_str().unwrap()) };
+
+	if fd >= 0 {
+		Some(FileDesc::new(fd, true))
+	}
+	else {
+		None
+	}
+
+}
+
 // set the file to have exclusive access, check result for success
 fn set_exclusive(file: &FileDesc) -> bool {
-	unsafe { let result: int = ioctrl_tiocexcl(file.fd()); }
+	let result = unsafe { ioctrl_tiocexcl(file.fd()) };
 
 	if result == 0 {
 		true
@@ -74,9 +91,8 @@ fn set_exclusive(file: &FileDesc) -> bool {
 // try to get the port options
 fn get_port_options(file: &FileDesc) -> Option<Termios> {
 	let options = Termios::new();
-
+	let result = unsafe { tcgetattr(file.fd(), options.target) };
 	// get the termios from the port
-	unsafe { let result = tcgetattr(file.fd(), options.target); }
 
 	// return options if successful
 	if result == 0 {
@@ -90,8 +106,8 @@ fn get_port_options(file: &FileDesc) -> Option<Termios> {
 
 // try and set the port options
 fn set_port_options(file: &FileDesc, options: &Termios) -> bool {
-	unsafe { let result = tcsetattr_tcsanow(file.fd(), options.target) -> c_int; }
-	it result == 0 {
+	let result = unsafe { tcsetattr_tcsanow(file.fd(), options.target) };
+	if result == 0 {
 		true
 	}
 	else {
@@ -106,7 +122,7 @@ fn flush_port(file: &FileDesc) {
 
 // wait until the port has finished sending
 fn drain_port(file: &FileDesc) {
-	unsage { tcdrain(file.fd()); }
+	unsafe { tcdrain(file.fd()); }
 }
 
 // set rs485 for sending
@@ -184,7 +200,7 @@ impl EnttecProOutPort {
  				markAfterBreakTime: 1,
  				refreshRate: 40 },
  			debug: false,
- 			oldOptions: Termios,
+ 			oldOptions: Termios::new(),
  			// for now set file as a new FileDesc with fd = -1 and close_on_drop=false
  			file: FileDesc::new(-1, false)
  		}
@@ -195,31 +211,29 @@ impl EnttecProOutPort {
  	fn start(&mut self) -> Result<(),SerialPortError> {
  		// if the port is open, stop it
  		if (self.open) {
- 			if self.debug {
- 				//TODO: debug message here
- 				// NSLog(@"%@ at %@ is already open. Stopping the port and restarting.",[self class],_devicePath);
- 			}
+
+
+			debug!("Port at {} is already open.  Stopping the port and restarting.",self.devicePath);
  			self.stop();
  		}
 
 
+ 		debug!("Attemping to open port at {}", self.devicePath);
 
-
-	    // TODO: debug message here
-		// if(_debug) NSLog(@"Attempting to open %@ at %@.",[self class],_devicePath);
-
+ 		/*
 		let path_c: CString;
 
 		// try to parse the devicePath as an actual path
 		match Path::new_opt(self.devicePath.as_slice()) {
 			Some(a_path) => { path_c = a_path.to_c_str();
 			},
-			None => { //TODO: debug message here: path parse failure
-				path_c = ("").to_c_str(); // this probably wont compile
+			None => {
+				path_c = ("").to_c_str();
 				return Err(PortPathParseError);
 			}
 		};
 
+		debug!("Path parsed OK, will now call open().");
 
  		// attempt to open the file describing the port, write-only
  		match native::io::file::open(&path_c, std::io::Open, std::io::Write) {
@@ -228,7 +242,18 @@ impl EnttecProOutPort {
  				// settings are now changing
  				self.settingsDirty = true;
  				self.file = the_file; },
- 			Err(the_error) => { //TODO: debug message about error syndrome
+ 			Err(the_error) => {
+ 				return Err(PortFileOpenError);
+ 			}
+ 		}
+ 		*/
+
+ 		match open_file(self.devicePath.as_slice()) {
+ 			Some(a_file) => {
+ 				self.settingsDirty = true;
+ 				self.file = a_file;
+ 			},
+ 			None => {
  				return Err(PortFileOpenError);
  			}
  		}
@@ -236,14 +261,13 @@ impl EnttecProOutPort {
  		// if we made it this far, we opened the port file successfully
 
  		self.open = true;
- 		// TODO: debug message here
-		// if(_debug) NSLog(@"Opened %@ at %@.",[self class],_devicePath);
+
+		debug!("Opened port file at {} , will now attempt to configure",self.devicePath);
 
 		// set the port to disallow any others to open it
 		match set_exclusive(&self.file) {
 			true => {},
 			false => { //TODO: debug message here
-				// NSLog(@"FAILED setting term io options.");
 				self.stop();
 				return Err(PortSetExclusiveError);
 			}
@@ -251,8 +275,8 @@ impl EnttecProOutPort {
 
 		// try to retrieve the port options
 		match get_port_options(&self.file) {
-			Ok(options) => { self.oldOptions = options; },
-			Err(err_val) => { // TODO: debug message of error syndrome
+			Some(options) => { self.oldOptions = options; },
+			None => {
 				self.stop();
 				return Err(PortOptionsError);
 			}
@@ -272,9 +296,9 @@ impl EnttecProOutPort {
         // this is all implemented in this method:
         options.set_as_enttec();
 
-        // TODO: debug message
-		// if(_debug) NSLog(@"Setting IO options.");
-		match set_port_options(&self.file, options) {
+        debug!("Setting IO options.")
+
+		match set_port_options(&self.file, &options) {
 			true => {},
 			false => { //TODO: debug message
 				self.stop();
@@ -297,14 +321,16 @@ impl EnttecProOutPort {
         // this is all implemented in this function:
         set_rs485_for_sending(&self.file);
 
+        debug!("Port at {} is now ready for use.",self.devicePath);
+
         // we have successfully started the port
         Ok(())
     }
 
     // TODO: should this return Result?
     fn stop(&mut self) {
-    	// TODO: debug message
-    	// if(_debug) NSLog(@"Stopping %@ %@...",[self class],_devicePath);
+
+    	debug!("Stopping port at {}",self.devicePath);
 
     	if self.open {
 
@@ -312,12 +338,11 @@ impl EnttecProOutPort {
     		drain_port(&self.file);
 
     		// set the options back to what they were originally
-    		set_port_options(&self.file, &self.oldOptions)
+    		set_port_options(&self.file, &self.oldOptions);
 
     		// in Obj-C need to explicitly close self.file
     		// here if we reassign self.file, the old file will be dropped
     		// and closed automatically
-
     		self.file = FileDesc::new(-1, false);
     		self.open = false;
 
@@ -336,13 +361,14 @@ impl EnttecProOutPort {
     fn send(&mut self, dmx: &[u8]) -> Result<(),SerialPortError> {
 
     	if !self.open {
-    		// TODO: debug message, port not open
     		return Err(PortClosed);
     	}
 
     	// if the settings have changed, resend them
     	if self.settingsDirty {
-    		// TODO: debug message here
+
+    		debug!("Sending data on port {}",self.devicePath);
+
     		match send_data(&mut self.file, SetParameters, self.settings.as_vec().as_slice() ) {
     			Ok(_) => {},
     			Err(err_val) => {return Err(SendDataError(err_val));}
@@ -367,8 +393,7 @@ impl EnttecProOutPort {
 	// in 10.67us units. range 9-127.
     fn set_break_time(&mut self, time: u8) {
     	if (time < 9 || time > 127) {
-    		// TODO: debug message here
-    		// NSLog(@"Invalid break time: %i * 10.67us", time);
+    		debug!("Invalid break time: {:u} * 10.67 us.", time);
     	}
     	else {
     		self.settingsDirty = true;
@@ -379,8 +404,7 @@ impl EnttecProOutPort {
 	// in 10.67us units. range 1-127.
     fn set_mark_after_break_time(&mut self, time: u8) {
     	if (time < 1 || time > 127) {
-    		// TODO debug message here
-    		// NSLog(@"Invalid MAB time: %i * 10.67us", time);
+    		debug!("Invalid MAB time: {:u} * 10.67 us.", time);
     	}
     	else {
     		self.settingsDirty = true;
@@ -392,8 +416,7 @@ impl EnttecProOutPort {
 	// 0 is special. It means "Go as fast as you can."
     fn set_refresh_rate(&mut self, rate: u8) {
     	if rate > 40 {
-    		// TODO: debug message here
-    		// NSLog(@"Invalid DMX refresh rate: %i fps", rate);
+    		debug!("Invalid DMX refresh rate: {:u} fps", rate);
     	}
     	else {
     		self.settings.refreshRate = rate;
@@ -450,18 +473,22 @@ fn send_data(file: &mut FileDesc, label: MessageLabel, data: &[u8]) -> Result<()
 
 fn main() {
 
-	let mut port = EnttecProOutPort::new(~"/Users/Chris/src/sinuous/src/enttec/test_file.txt");
+	let dev = ~"/dev/tty.usbserial-EN077232";
+	//let dev = ~"/Users/Chris/src/sinuous/src/enttec/test.txt";
+
+	let mut port = EnttecProOutPort::new(dev);
 	match port.start() {
-		Ok(_) => println!("fake port started successfully"),
+		Ok(_) => println!("port started successfully"),
 		Err(the_err) => println!("{:?}",the_err)
 	}
 
-	let test_payload = ~[123u8, ..10];
+	let test_payload = ~[123u8, ..DMX_LEN];
 
 	match port.send(test_payload.as_slice()) {
-		Ok(_) => println!("fake port sent data successfully"),
+		Ok(_) => println!("port sent data successfully"),
 		Err(the_err) => println!("{:?}",the_err)
 	}
+
 
 	port.stop();
 
