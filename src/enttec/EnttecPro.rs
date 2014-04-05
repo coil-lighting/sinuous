@@ -3,64 +3,119 @@ use native::io::file::FileDesc;
 use std::io::IoError;
 use std::c_str::CString;
 
+use std::libc::{c_int};
+
 
 // declare any static parameters
 static DMX_LEN: uint = 512;
 static DMX_DATA_LEN: uint = 513;
 
-// TODO: WTF do we do about this
-struct Termios;
+// import our wrappered C interface
+#[link(name = "ioctrl_wrapper")]
+extern {
+	fn ioctrl_tiocexcl(fd: c_int) ->  c_int;
+	fn tcgetattr(fildes: c_int, termios_p: *mut TermiosPtr) -> c_int;
+	fn new_termios() -> *mut TermiosPtr;
+	fn free_termios(to_free: *mut TermiosPtr);
+	fn clone_termios(to_clone: *mut TermiosPtr) -> *mut TermiosPtr;
+	fn tcsetattr_tcsanow(fd: c_int, options: *mut TermiosPtr) -> c_int;
+	fn tcflush_io(fd: c_int) -> c_int;
+	fn tcdrain(fd: c_int) -> c_int;
+	fn ioctrl_tiocmgetandset(fd: c_int) -> c_int;
+	fn set_options_enttec(options: *mut TermiosPtr);
+}
 
-// TODO: implement Clone for Termios
-impl Clone for Termios {
-	fn clone(&self) -> Termios {
-		Termios
+enum TermiosPtr {}
+
+// a Termios holds a pointer to the C struct
+// Must never instantiate this except by using Termios::new() and others
+struct Termios {
+	target: *TermiosPtr
+}
+
+impl Termios {
+	fn new() -> Termios {
+		unsafe { Termios{target: new_termios()} }
+	}
+
+	fn set_as_enttec(&mut self) {
+		unsafe { set_options_enttec(self.target); }
 	}
 }
 
-// TODO: implement some/all of these guys as Traits
-// could have Trait POSIXSerial
-// EntttecPro itself is a Trait that inherits from POSIXSerial
-// then these functions could be methods instead of sitting out here
-
-// TODO: create this function
-// this function should be a wrapper on ioctl(_fd, TIOCEXCL)
-// takes a FileDesc on which to perform this operation
-// returns Ok if sucessful, Err(int) if otherwise
-fn set_exclusive(file: &FileDesc) -> Result<(),int> {
-	Ok(())
+// clone a Termios by calling the C function to allocate a new one and copy
+impl Clone for Termios {
+	fn clone(&mut self) -> Termios {
+		unsafe { Termios{target: clone_termios(self.target)} }
+	}
 }
 
-// TODO: create this function
-// tcgetattr(_fd, &oldOptions);
-// presenting a different interface
-// give a FileDesc and get a Termios back or an error
-fn get_port_options(file: &FileDesc) -> Result<Termios,int> {
-	Ok(Termios)
+// go into C and call free
+impl Drop for Termios {
+	fn drop(&mut self) {
+		unsafe { free_termios(self.target); }
+	}
 }
 
-// TODO: create this function
-// int ret = tcsetattr(_fd, TCSANOW, &options);
-// give a FileDesc and the port options
-// return Ok or Err(int)
-// Do we need to return Result?  can this fail?
-fn set_port_options(file: &FileDesc, options: Termios) -> Result<(),int> {
-	Ok(())
+// "safe" interface to C functions
+
+// set the file to have exclusive access, check result for success
+fn set_exclusive(file: &FileDesc) -> bool {
+	unsafe { let result: int = ioctrl_tiocexcl(file.fd()); }
+
+	if result == 0 {
+		true
+	}
+	else {
+		false
+	}
 }
 
-// TODO: create this function
-// int ret = tcflush(_fd, TCIOFLUSH);
-// give a FileDesc
-// return a Result?  no return?
+// try to get the port options
+fn get_port_options(file: &FileDesc) -> Option<Termios> {
+	let options = Termios::new();
+
+	// get the termios from the port
+	unsafe { let result = tcgetattr(file.fd(), options.target); }
+
+	// return options if successful
+	if result == 0 {
+		Some(options)
+	}
+	else {
+		None
+	}
+
+}
+
+// try and set the port options
+fn set_port_options(file: &FileDesc, options: &Termios) -> bool {
+	unsafe { let result = tcsetattr_tcsanow(file.fd(), options.target) -> c_int; }
+	it result == 0 {
+		true
+	}
+	else {
+		false
+	}
+}
+
+// flush the port; could return success or fail, but it wont fail if port is open
 fn flush_port(file: &FileDesc) {
+	unsafe { tcflush_io(file.fd()); }
 }
 
-// TODO: create this function
-// int ret = tcdrain(_fd); // TODO check return values?
-// give a FileDesc
-// return a Result?
+// wait until the port has finished sending
 fn drain_port(file: &FileDesc) {
+	unsage { tcdrain(file.fd()); }
 }
+
+// set rs485 for sending
+// is this necessary?
+fn set_rs485_for_sending(file: &FileDesc) {
+	unsafe {ioctrl_tiocmgetandset(file.fd()); }
+}
+
+
 
 // enum for possible port errors
 enum SerialPortError {
@@ -74,7 +129,7 @@ enum SerialPortError {
 }
 
 
-// some parameters; should we make this static?
+// some enttec parameters
 struct EnttecProParams {
         userSizeLSB: u8,
         userSizeMSB: u8,
@@ -186,8 +241,8 @@ impl EnttecProOutPort {
 
 		// set the port to disallow any others to open it
 		match set_exclusive(&self.file) {
-			Ok(_) => {},
-			Err(err_val) => { //TODO: debug message here
+			true => {},
+			false => { //TODO: debug message here
 				// NSLog(@"FAILED setting term io options.");
 				self.stop();
 				return Err(PortSetExclusiveError);
@@ -203,10 +258,9 @@ impl EnttecProOutPort {
 			}
 		}
 
-		// TODO: ensure that this is a deep copy
 		let mut options = self.oldOptions.clone();
 
-		// TODO: implement these settings once we know what Termios will be
+
 		/*
 
             options.c_cflag = (CS8 | CSTOPB | CLOCAL | CREAD);
@@ -215,30 +269,33 @@ impl EnttecProOutPort {
             options.c_cc[ VMIN ] = 1;
             options.c_cc[ VTIME ] = 0;
         */
+        // this is all implemented in this method:
+        options.set_as_enttec();
 
         // TODO: debug message
 		// if(_debug) NSLog(@"Setting IO options.");
 		match set_port_options(&self.file, options) {
-			Ok(_) => {},
-			Err(err_val) => { //TODO: debug message
+			true => {},
+			false => { //TODO: debug message
 				self.stop();
 				return Err(PortOptionsError);
 			}
 		}
 
 
-
-		// TODO: match on error condition?
+		// empty the port if there's something in there already
 		flush_port(&self.file);
 
-		/* TODO: what are we doing with this section?
+		/*
 		// probably not necessary
             // set RS485 for sending
             int flag;
             ret = ioctl(_fd, TIOCMGET, &flag);
             flag &= ~TIOCM_RTS;     // clear RTS flag
             ret = ioctl(_fd, TIOCMSET, &flag);
-            */
+        */
+        // this is all implemented in this function:
+        set_rs485_for_sending(&self.file);
 
         // we have successfully started the port
         Ok(())
@@ -251,12 +308,11 @@ impl EnttecProOutPort {
 
     	if self.open {
 
-    		// TODO: match on return value?
-    		// what does this do?
+    		// wait for the port to finish sending
     		drain_port(&self.file);
 
-    		// TODO: what about this guy?
-    		// ret = tcsetattr(_fd, TCSANOW, &oldOptions);
+    		// set the options back to what they were originally
+    		set_port_options(&self.file, &self.oldOptions)
 
     		// in Obj-C need to explicitly close self.file
     		// here if we reassign self.file, the old file will be dropped
@@ -393,5 +449,20 @@ fn send_data(file: &mut FileDesc, label: MessageLabel, data: &[u8]) -> Result<()
 }
 
 fn main() {
+
+	let mut port = EnttecProOutPort::new(~"/Users/Chris/src/sinuous/src/enttec/test_file.txt");
+	match port.start() {
+		Ok(_) => println!("fake port started successfully"),
+		Err(the_err) => println!("{:?}",the_err)
+	}
+
+	let test_payload = ~[123u8, ..10];
+
+	match port.send(test_payload.as_slice()) {
+		Ok(_) => println!("fake port sent data successfully"),
+		Err(the_err) => println!("{:?}",the_err)
+	}
+
+	port.stop();
 
 }
