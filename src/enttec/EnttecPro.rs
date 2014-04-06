@@ -7,7 +7,6 @@ use std::c_str::CString;
 
 use std::libc::{c_int,c_char};
 
-
 // declare any static parameters
 static DMX_LEN: uint = 512;
 static DMX_DATA_LEN: uint = 513;
@@ -369,7 +368,9 @@ impl EnttecProOutPort {
 
     		debug!("Sending data on port {}",self.devicePath);
 
-    		match send_data(&mut self.file, SetParameters, self.settings.as_vec().as_slice() ) {
+    		let settings_vec = self.settings.as_vec();
+
+    		match send_data(&mut self.file, SetParameters, settings_vec.as_slice(), settings_vec.len(), false ) {
     			Ok(_) => {},
     			Err(err_val) => {return Err(SendDataError(err_val));}
     		}
@@ -380,8 +381,7 @@ impl EnttecProOutPort {
     	// TODO: check if this is OK.
     	// original call was
     	// sendData(_fd, outputOnlySendDmxMessageLabel, _dmx, _registerCount + 1) // length was DMX_DATA_LEN rather than _registerCount + 1
-		// may need to change send_data to include length; is registerCount + 1 anything besides length of _dmx?
-    	match send_data(&mut self.file, OutputOnlySendDmx, dmx) {
+    	match send_data(&mut self.file, OutputOnlySendDmx, dmx, dmx.len() + 1, true) {
     		Ok(_) => {},
     		Err(err_val) => {return Err(SendDataError(err_val));}
     	}
@@ -445,9 +445,19 @@ enum MessageLabel {
 
 
 // basically a wrapper on several sequential write operations
-fn send_data(file: &mut FileDesc, label: MessageLabel, data: &[u8]) -> Result<(),IoError> {
-	let length = data.len();
-	let header: ~[u8] = ~[0x7E, label as u8, (length & 0xFF) as u8, (length>>8) as u8 ];
+// the enttec spec needs a 0 before the DMX data; right now the bool argument
+// is a hack to add this.
+fn send_data(file: &mut FileDesc, label: MessageLabel, data: &[u8], length: uint, isDmx: bool) -> Result<(),IoError> {
+
+	let header: ~[u8];
+
+	if isDmx {
+		header = ~[0x7E, label as u8, (length & 0xFF) as u8, ((length>>8) & 0xFF) as u8, 0 ];
+	}
+	else {
+		header = ~[0x7E, label as u8, (length & 0xFF) as u8, ((length>>8) & 0xFF) as u8 ];
+	}
+
 	let end_of_message: ~[u8] = ~[0xE7];
 
 	match file.write(header) {
@@ -471,6 +481,16 @@ fn send_data(file: &mut FileDesc, label: MessageLabel, data: &[u8]) -> Result<()
 	Ok(())
 }
 
+fn rainbow_stupid(tick: int) -> ~[u8] {
+	let mut dmx: ~[u8] = ~[0, ..DMX_LEN];
+	let arg: f64 = 2.*Float::pi()*(tick as f64)/255.;
+	for chan in range(0,dmx.len()) {
+		dmx[chan] = ((((arg + 2.*Float::pi()*((chan%3) as f64)/3.).sin() + 1.) /2. )*255.) as u8;
+	}
+
+	dmx
+}
+
 fn main() {
 
 	let dev = ~"/dev/tty.usbserial-EN077232";
@@ -482,12 +502,28 @@ fn main() {
 		Err(the_err) => println!("{:?}",the_err)
 	}
 
-	let test_payload = ~[123u8, ..DMX_LEN];
+	let mut test_payload = ~[0u8, ..DMX_LEN];
 
-	match port.send(test_payload.as_slice()) {
-		Ok(_) => println!("port sent data successfully"),
-		Err(the_err) => println!("{:?}",the_err)
+	for tic in range(1,600) {
+
+		//test_payload = ~[((tic)%256) as u8, ..DMX_LEN];
+		test_payload = rainbow_stupid(tic);
+
+		match port.send(test_payload.as_slice()) {
+			Ok(_) => (),//println!("port sent data successfully"),
+			Err(the_err) => ()//println!("{:?}",the_err)
+		}
+
+		std::io::timer::sleep(33);
+
 	}
+
+	test_payload = ~[0, ..DMX_LEN];
+
+		match port.send(test_payload.as_slice()) {
+			Ok(_) => (),//println!("port sent data successfully"),
+			Err(the_err) => ()//println!("{:?}",the_err)
+		}
 
 
 	port.stop();
