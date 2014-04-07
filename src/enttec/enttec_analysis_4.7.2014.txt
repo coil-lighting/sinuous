@@ -1,0 +1,175 @@
+Notes on enttec analysis
+
+Testing conditions:
+
+port parameters:
+set fps: 10
+set break: 9
+set MAB: 1
+
+software parameters:
+rising pattern, 10 dmx vals per step, 200 ms sleep between steps
+
+measurements:
+100 ms rep rate
+mark between packets: 56.64 ms
+break: 192.375 us
+MAB: 12.45 us
+11 bits in 85 us:
+4 us per bit
+~41 us mark after slot (interesting)
+
+measured sequence:
+100
+110
+110
+120
+120
+130
+130
+140
+140
+150
+150
+160
+160
+170
+170
+180
+180
+190
+190
+
+looks good
+
+port parameters:
+set fps: 10
+set break: 9
+set MAB: 1
+
+software parameters:
+rising pattern, 1 dmx vals per step, 50 ms sleep between steps
+
+measurements:
+100 ms rep rate
+mark between packets: 56.7 ms
+break: 192.5 us
+MAB: 12.3 us
+~40 us mark after slot
+
+measured sequence:
+38
+40
+42
+44
+46
+48
+50
+52
+etc.
+
+sensible.  the port has a one-packet buffer.  it sends out whatever it has on its frame clock.
+sending a packet to the port is asynchronous.
+
+"stopping" the port doesn't actually stop sending DMX packets.  any way we can override this behavior?
+when the port is first plugged in it is not transmitting.
+the port is still not transmitting when the "start()" method is called.
+
+
+ok time to push the limits.
+we must send at least 24 (25?) channels at maximum speed to satisfy the minimum time between breaks of 1204 us.
+
+port parameters:
+
+set fps: 40
+set break: 9
+set MAB: 1
+
+software parameters:
+rising pattern, 1 dmx value per step, 25 ms sleep between steps
+
+measurements:
+25.08 ms rep rate
+mark between packets: 13.58 ms
+break: 192.5 us
+MAB: 12.62 us
+no mark after slot
+44 us to send 11 bits
+
+measured sequence:
+136
+137
+138
+139
+140
+141
+142
+143
+144
+145
+146
+147
+148
+149
+150
+
+cool
+
+
+MAXIMUM SPEED!!!
+
+port parameters:
+
+set fps: 0
+set break: 9
+set MAB: 1
+
+software parameters:
+rising pattern, 1 dmx val per step, 5 ms sleep between steps
+
+measurements:
+11.5 ms rep rate
+mark between packets: none
+break: 191.7 us
+MAB: 12.45 us
+no mark after slot
+44 us to send 11 bits
+
+measured sequence:
+73
+75
+75/76 (75 in slot 135, 76 in slot 136)
+77/78 (split at 121/122)
+79/80/81 (split at 84/85, 243/244)
+
+wow.  it looks like in this mode it allows the buffer to change during write.
+
+checking this in 40 fps mode: this happens with 5 ms refresh here as well.
+
+it looks like writing to the buffer and sending the buffer happen simultaneously.
+
+
+checking reduced universe size:
+
+25 channels, 40 fps: sends just fine
+3 channels, 40 fps: sends 24 channels with padding added, as expected
+0 channels, 40 fps: no error, sends 24 zero-padded channels
+25 channels, 0 fps: seems fine:
+
+measurements:
+1.348 ms rep rate
+mark betwen packets: none
+break: 191.7 us
+MAB: 12.45 us
+no mark after slot
+44 us to send 11 bits
+
+
+25 channels, 0 fps: strobing with 11 ms software timing is fucking amazing on colorblast OG.
+this colorblast seems to be meeting the full tightness of the DMX spec.
+strobing achieved at 90.9 Hz if it is really responding at 11 ms intervals.
+very qualitatively different than 22 ms refresh rate
+incredible.
+
+
+

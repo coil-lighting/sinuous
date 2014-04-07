@@ -3,13 +3,14 @@
 extern crate native;
 use native::io::file::FileDesc;
 use std::io::IoError;
+use std::io;
+use std::slice;
 use std::c_str::CString;
 
 use std::libc::{c_int,c_char};
 
 // declare any static parameters
 static DMX_LEN: uint = 512;
-static DMX_DATA_LEN: uint = 513;
 
 // import our wrappered C interface
 #[link(name = "ioctrl")]
@@ -370,7 +371,7 @@ impl EnttecProOutPort {
 
     		let settings_vec = self.settings.as_vec();
 
-    		match send_data(&mut self.file, SetParameters, settings_vec.as_slice(), settings_vec.len(), false ) {
+    		match send_data(&mut self.file, SetParameters, settings_vec.as_slice(), false ) {
     			Ok(_) => {},
     			Err(err_val) => {return Err(SendDataError(err_val));}
     		}
@@ -381,7 +382,7 @@ impl EnttecProOutPort {
     	// TODO: check if this is OK.
     	// original call was
     	// sendData(_fd, outputOnlySendDmxMessageLabel, _dmx, _registerCount + 1) // length was DMX_DATA_LEN rather than _registerCount + 1
-    	match send_data(&mut self.file, OutputOnlySendDmx, dmx, dmx.len() + 1, true) {
+    	match send_data(&mut self.file, OutputOnlySendDmx, dmx, true) {
     		Ok(_) => {},
     		Err(err_val) => {return Err(SendDataError(err_val));}
     	}
@@ -445,14 +446,26 @@ enum MessageLabel {
 
 
 // basically a wrapper on several sequential write operations
-// the enttec spec needs a 0 before the DMX data; right now the bool argument
-// is a hack to add this.
-fn send_data(file: &mut FileDesc, label: MessageLabel, data: &[u8], length: uint, isDmx: bool) -> Result<(),IoError> {
+// need to add the DMX start code before the DMX packet, thus the bool
+// must send at least 24 DMX channels per frame for minimum time between breaks
+fn send_data(file: &mut FileDesc, label: MessageLabel, data: &[u8], isDmx: bool) -> Result<(),IoError> {
 
 	let header: ~[u8];
 
+	// get the length
+	let mut length = data.len();
+
+	let mut pads_to_add: uint = 0;
+
 	if isDmx {
-		header = ~[0x7E, label as u8, (length & 0xFF) as u8, ((length>>8) & 0xFF) as u8, 0 ];
+
+		// add padding if length is less than 24
+		if length < 24 {
+			pads_to_add = 24 - length;
+			length = 24;
+		}
+
+		header = ~[0x7E, label as u8, ((length+1) & 0xFF) as u8, (((length+1)>>8) & 0xFF) as u8, 0 ];
 	}
 	else {
 		header = ~[0x7E, label as u8, (length & 0xFF) as u8, ((length>>8) & 0xFF) as u8 ];
@@ -473,6 +486,13 @@ fn send_data(file: &mut FileDesc, label: MessageLabel, data: &[u8], length: uint
 		}
 	}
 
+	if pads_to_add > 0 {
+		match file.write(std::slice::from_elem(pads_to_add,0u8)) {
+			Ok(_) => {},
+			Err(err_val) => {return Err(err_val);}
+		}
+	}
+
 	match file.write(end_of_message) {
 		Ok(_) => {},
 		Err(err_val) => {return Err(err_val);}
@@ -481,14 +501,43 @@ fn send_data(file: &mut FileDesc, label: MessageLabel, data: &[u8], length: uint
 	Ok(())
 }
 
-fn rainbow_stupid(tick: int) -> ~[u8] {
+// rate is ticks per cycle
+fn rainbow_stupid(tick: uint, amp: u8, period: uint) -> ~[u8] {
 	let mut dmx: ~[u8] = ~[0, ..DMX_LEN];
-	let arg: f64 = 2.*Float::pi()*(tick as f64)/255.;
+	let arg: f64 = 2.*Float::pi()*(tick as f64) * (1./(period as f64));
 	for chan in range(0,dmx.len()) {
-		dmx[chan] = ((((arg + 2.*Float::pi()*((chan%3) as f64)/3.).sin() + 1.) /2. )*255.) as u8;
+		dmx[chan] = ((((arg + 2.*Float::pi()*((chan%3) as f64)/3.).sin() + 1.) /2. )*(amp as f64)) as u8;
 	}
 
 	dmx
+}
+
+// rate is DMX values per tick
+fn all_rising(tick: uint, step_size: u8) -> ~[u8] {
+	~[step_size * ((tick % 255) as u8), ..DMX_LEN]
+}
+
+fn all_same(val: u8) -> ~[u8] {
+	~[val, ..DMX_LEN]
+}
+
+fn strobe(tick: uint, amp: u8) -> ~[u8] {
+	all_same(amp * ((tick%2) as u8))
+}
+
+enum Pattern {
+	Same,
+	Rising,
+	RainbowStupid,
+	Strobe
+}
+
+fn print_info() {
+	println!("type \"q\" to quit");
+	println!("other commands: fps , univ_size");
+	println!("dmx pattern options: same, rising, rainbow, strobe");
+	println!("Command format:");
+	println!("pat ampl period nframe wait_bet_frames_ms");
 }
 
 fn main() {
@@ -502,30 +551,140 @@ fn main() {
 		Err(the_err) => println!("{:?}",the_err)
 	}
 
-	let mut test_payload = ~[0u8, ..DMX_LEN];
 
-	for tic in range(1,600) {
+	print_info();
 
-		//test_payload = ~[((tic)%256) as u8, ..DMX_LEN];
-		test_payload = rainbow_stupid(tic);
+	let mut dmx: ~[u8] = ~[];
 
-		match port.send(test_payload.as_slice()) {
-			Ok(_) => (),//println!("port sent data successfully"),
-			Err(the_err) => ()//println!("{:?}",the_err)
+	let mut pat = Same;
+	let mut amp: u8 = 0;
+	let mut rate: uint = 1;
+	let mut n_frames: uint = 0;
+	let mut wait: u64 = 1000;
+
+	let mut univ_size: uint = 256;
+
+	let mut quit = false;
+
+	let mut set_fps = false;
+	let mut set_univ_size = false;
+
+	loop {
+		for line in io::stdin().lines() {
+			let line_conts = line.unwrap();
+		    // print!("{}", read);
+
+		    if line_conts == ~"q\n" {
+		    	quit = true;
+		    	break;
+		    }
+		    else if set_fps {
+		    	let word = line_conts.words().next().unwrap();
+		    	match from_str(word) {
+		    		Some(f) => {
+		    			port.set_refresh_rate(f);
+		    			set_fps = false;
+		    			print_info();
+		    		},
+		    		None => {
+		    			println!("could not parse fps");
+		    			set_fps = false;
+		    		}
+		    	}
+		    }
+		    else if set_univ_size {
+		    	let word = line_conts.words().next().unwrap();
+		    	let res: Option<uint> = from_str(word);
+		    	match res {
+		    		Some(n) if (n <= 256) => {
+		    			univ_size = n;
+		    			set_univ_size = false;
+		    			print_info();
+		    		},
+		    		_ => {
+		    			println!("could not parse universe size or out of bounds");
+		    			set_univ_size = false;
+		    		}
+		    	}
+		    }
+		    else if line_conts == ~"fps\n" {
+		    	println!("enter fps:");
+		    	set_fps = true;
+		    }
+		    else if line_conts == ~"univ_size\n" {
+		    	println!("enter universe size (0-256):");
+		    	set_univ_size = true;
+		    }
+		    else {
+		    	let words: ~[&str] = line_conts.words().collect();
+
+		    	if words.len() < 5 {
+		    		println!("Insufficient arguments.");
+		    	}
+		    	else {
+			    	match words[0] {
+			    		p if p == "same" => pat = Same,
+			    		p if p == "rising" => pat = Rising,
+			    		p if p == "rainbow" => pat = RainbowStupid,
+			    		p if p == "strobe" => pat = Strobe,
+			    		p => println!("Undefined pattern option: {}",p)
+			    	}
+
+			    	match from_str(words[1]) {
+			    		Some(a) => amp = a,
+			    		None => println!("amp parse error")
+			    	}
+
+			    	match from_str(words[2]) {
+			    		Some(r) => rate = r,
+			    		None => println!("Rate parse error")
+			    	}
+
+			    	match from_str(words[3]) {
+			    		Some(n) => n_frames = n,
+			    		None => println!("N frames parse error")
+			    	}
+
+			    	match from_str(words[4]) {
+			    		Some(w) => wait = w,
+			    		None => println!("ms wait parse error")
+			    	}
+
+			    	println!("{:?} {} {} {} {}", pat, amp, rate, n_frames, wait);
+
+			    	for tick in range(0,n_frames) {
+				    	match pat {
+				    		Same => dmx = all_same(amp),
+				    		Rising => dmx = all_rising(tick, rate as u8),
+				    		RainbowStupid => dmx = rainbow_stupid(tick, amp, rate),
+				    		Strobe => dmx = strobe(tick, amp)
+				    	}
+
+				    	// only send as many packets as we've defined the universe to be
+		    			match port.send(dmx.slice_to(univ_size as uint)) {
+							Ok(_) => (),//println!("port sent data successfully"),
+							Err(the_err) => println!("{:?}",the_err)
+						}
+
+						std::io::timer::sleep(wait);
+
+			    	}
+
+			    	print_info();
+
+		    	}
+
+
+
+
+		    }
+
 		}
 
-		std::io::timer::sleep(33);
-
+		if quit {
+			break;
+		}
 	}
 
-	test_payload = ~[0, ..DMX_LEN];
-
-		match port.send(test_payload.as_slice()) {
-			Ok(_) => (),//println!("port sent data successfully"),
-			Err(the_err) => ()//println!("{:?}",the_err)
-		}
-
-
-	port.stop();
 
 }
