@@ -32,15 +32,21 @@
 }
 
 - (id) initWithDevicePath: (NSString*) dev {
+	//! this appears to be a check to make sure init does not return nil
     if( (self=[super init]) ) {
 		// clear the dmx state
 		bzero(_dmx,DMX_DATA_LEN); // clear the message buffer
-		[self setDevicePath: dev];
+		//! csm: I don't understand why we need to clear _dmx if this is initing a new port
+
+		[self setDevicePath: dev]; // set the device path to the path we just input
+
+		//! now set all the fields of _settings, a DMXUSBPROSetParamsType
 		_settings.userSizeLSB        = 0;
 		_settings.userSizeMSB        = 0;
 		_settings.breakTime          = 9;
 		_settings.markAfterBreakTime = 1;
 		_settings.refreshRate        = 40;
+		//! wtf is settingsDirty?
 		_settingsDirty               = YES;
 		_registerCount               = DMX_LEN;
    }
@@ -53,6 +59,8 @@
 	return _devicePath;
 }
 
+//! some nasty low level memory management going on here
+//! not sure why this is necessary
 - (void) setDevicePath: (NSString*) dev {
 	if(_devicePath != dev) {
 		[_devicePath release]; // FIXME not perfectly thread-safe w.r.t. _threadStart. beware.

@@ -8,7 +8,7 @@
 
 //#import <PuppeteerFrameworkUtil/PuppeteerFrameworkUtil.h>
 
-@protocol PFDMXOutPort <NSObject>
+@protocol PFDMXOutPort <NSObject>  // NSObject is the root object class in objC
 // return a formatted log of this port's dmx state
 - (NSString *) stateToString: (unsigned char*) buf;
 
