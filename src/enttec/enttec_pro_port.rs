@@ -2,8 +2,8 @@
 //!
 //! Functions for creating a port and sending data with it.  Opening and closing
 //! are handled automatically by Rust.  Port will close upon deconstruction.
-#[feature(globs)];
-#[feature(phase)];
+#![feature(globs)]
+#![feature(phase)]
 #[phase(syntax, link)] extern crate log;
 
 extern crate std;
@@ -13,7 +13,7 @@ extern crate native;
 use native::io::file::FileDesc;
 use std::io::IoError;
 
-use enttec_pro_port::posix_port::*;
+use self::posix_port::*;
 
 mod posix_port;
 
@@ -21,7 +21,7 @@ mod posix_port;
 pub static DMX_LEN: uint = 512;
 
 // enum for possible port errors
-enum SerialPortError {
+pub enum SerialPortError {
 	UnspecifiedPortError,
 	PortClosed,
 	PortPathParseError,
@@ -50,12 +50,12 @@ impl EnttecProParams {
 
 // type that represents our interface to an enttec port
 pub struct EnttecProOutPort {
-	priv open: bool, // true when the port is open.
-	priv settingsDirty: bool, // true when settings have changed and need to be transmitted to the usb dongle
-	priv devicePath: ~str,
-	priv settings: EnttecProParams,
-	priv oldOptions: Termios, // stores old port settings. we restore them when we close the port.
-	priv file: FileDesc // the file descriptor for the port
+	open: bool, // true when the port is open.
+	settingsDirty: bool, // true when settings have changed and need to be transmitted to the usb dongle
+	devicePath: ~str,
+	settings: EnttecProParams,
+	oldOptions: Termios, // stores old port settings. we restore them when we close the port.
+	file: FileDesc // the file descriptor for the port
 }
 
 // ensure we close the port if it is open when we destruct

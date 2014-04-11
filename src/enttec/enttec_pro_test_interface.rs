@@ -2,8 +2,8 @@
 //!
 //! Functions for creating a port and sending data with it.  Opening and closing
 //! are handled automatically by Rust.  Port will close upon deconstruction.
-#[feature(globs)];
-#[feature(phase)];
+#![feature(globs)]
+#![feature(phase)]
 #[phase(syntax, link)] extern crate log;
 
 use std::io;

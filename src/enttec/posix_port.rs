@@ -1,10 +1,11 @@
 
 
 extern crate native;
+extern crate libc;
 
 use native::io::file::FileDesc;
 
-use std::libc::{c_int,c_char};
+use self::libc::types::os::arch::c95::{c_int,c_char};
 
 
 #[link(name = "ioctrl")]
@@ -23,13 +24,13 @@ extern {
 }
 
 // phantom class to hold a pointer to a Termios
-enum TermiosPtr {}
+pub enum TermiosPtr {}
 
 // a Termios holds a pointer to the C struct
 // Must never instantiate this except by using Termios::new() and others
 // This is handled externally to this module by the private visibility of the field
 pub struct Termios {
-	priv target: *mut TermiosPtr
+	target: *mut TermiosPtr
 }
 
 impl Termios {
@@ -55,6 +56,8 @@ impl Drop for Termios {
 		unsafe { free_termios(self.target); }
 	}
 }
+
+
 
 // "safe" interface to C functions
 
