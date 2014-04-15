@@ -964,6 +964,27 @@ fn renderDMXFloatWithRange(n: f64, &range: UnipolarChannelValueRangeMatrix<u8>, 
     )
 }
 
+// Write a single unipolar value to a contiguous pair of DMX channels.
+// Clip n to the range [0..1.0].
+// This is a big-endian implementation. HSB is written first, then LSB.
+// TODO add 'BigEndian' to the name?
+fn renderDMXDouble(n: f64, offset: u16, buffer: &[u8]) {
+    let nn = unipolar_unit_limit_f64_to_u8(n);
+    let (hsb, lsb) = (
+        if nn <= 0.0 {
+            (0, 0)
+        } else if nn >= 1.0 {
+            (255, 255)
+        } else {
+            // TODO verify rounding
+            let almost_one = (n * 65535.999999) as u16;
+            ((i1 & 0xFF00) >> 8), i1 & 0xFF)
+        }
+    )
+    buffer[offset] = hsb
+    buffer[offset+1] = lsb
+}
+
 
 // IDEA: Topo structure
 //   \- blender methods (as named attributes pointing to functions)
