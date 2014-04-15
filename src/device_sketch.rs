@@ -424,7 +424,16 @@ struct DeviceEndpoint {
 // Low-level wrapping, normalization, and limiting functions
 
 // TODO: is it possible to have a generic decl for pairsort_*64 without using
-// pointers?
+// pointers? It must be.
+
+fn pairsort_u16(a: u16, b: u16) -> (u16, u16) {
+    if a < b {
+        (b, a)
+    } else {
+        (a, b)
+    }
+}
+
 
 // reorder (a, b) to (b, a) if b > a
 fn pairsort_i64(a: i64, b: i64) -> (i64, i64) {
@@ -500,7 +509,7 @@ fn unipolar_unit_limit_f64_to_u8(n: f64) -> u8 {
         0
     } else {
         // TODO just a sketch - maximize precision
-        (x * 255.999999) as u8
+        (n * 255.999999) as u8
     }
 }
 
@@ -887,7 +896,7 @@ struct BipolarChannelValueRangeMatrix<T> {
 
 fn renderDMXFloatBipolarWithRange(n: f64, range: &BipolarChannelValueRangeMatrix<u8>, offset: u16, buffer: &[u8]) -> u8 {
     let nn = bipolar_unit_limit_f64_to_u8(n);
-    buffer.offset = (
+    buffer[offset] = (
         if nn == 0.0 {
             // TODO consider adding some tolerance for the zero notch? Or perhaps
             // this should just be the responsibility of the UI.
@@ -898,7 +907,7 @@ fn renderDMXFloatBipolarWithRange(n: f64, range: &BipolarChannelValueRangeMatrix
             } else {
                 // nn is negative
                 // Invert the interpolation if needed.
-                let (rmin, rmax) = pairsort_i16(range.neg.min, range.neg.max);
+                let (rmin, rmax) = pairsort_u16(range.neg.min, range.neg.max);
                 // TODO: maximize precision
                 let delta = (rmax - rmin) as i64 + 0.999999;
                 // TODO verify rounding (see also below)
@@ -909,10 +918,10 @@ fn renderDMXFloatBipolarWithRange(n: f64, range: &BipolarChannelValueRangeMatrix
                 range.max.min
             } else {
                 // nn is positive
-                let (rmin, rmax) = pairsort_i16(range.pos.min, range.pos.max);
+                let (rmin, rmax) = pairsort_u16(range.pos.min, range.pos.max);
                 // TODO maximize precision
                 let delta = (rmax - rmin) as i64 + 0.999999;
-                rmin + (x * delta) as u8
+                rmin + (nn * delta) as u8
             }
         }
     );
@@ -958,9 +967,9 @@ fn renderDMXFloatWithRange(n: f64, range: &UnipolarChannelValueRangeMatrix<u8>, 
             range.max.min
         } else {
             // Invert the interpolation if needed.
-            let (rmin, rmax) = pairsort_i16(range.mid.min, range.mid.max);
+            let (rmin, rmax) = pairsort_u16(range.mid.min, range.mid.max);
             // TODO: just a sketch; make this precise
-            let delta = (r_max - r_min) as f64 + 0.999999;
+            let delta = (rmax - rmin) as f64 + 0.999999;
             // TODO: verify distribution of values over u8 range after rounding
             rmin + (nn * delta) as u8
         }
@@ -982,7 +991,7 @@ fn renderDMXDouble(n: f64, offset: u16, buffer: &[u8]) -> (u8, u8) {
         } else {
             // TODO verify rounding
             let almost_one = (nn * 65535.999999) as u16;
-            ((i1 & 0xFF00) >> 8, i1 & 0xFF)
+            ((almost_one & 0xFF00) >> 8, almost_one & 0xFF)
         }
     );
     buffer[offset] = hsb;
@@ -1052,20 +1061,20 @@ struct SpinRangeMatrix<T> {
 // Renders two channels. The first channel is mode, the next speed.
 fn renderDMXSpinBipolar2ChWithRange(n: f64, range: &[SpinRangeMatrix<u8>], offset: u16, buffer: &[u8]) -> u8 {
     let nn = fLimitBiUnit(n);
-    let mode, speed = (
+    let (mode, speed) = (
         if nn == 0.0 { // motionless
-            range.stop.min, 0
+            (range.stop.min, 0)
             // TODO: customizable speed range, in case 1 is still or 254 is fastest.
         } else if nn > 0.0 { // forward
             // TODO verify rounding
-            range.fwd.min, (nn * 255.999999) as u8
+            (range.fwd.min, (nn * 255.999999) as u8)
         } else { // reverse
-            range.rev.min, (-1.0 * nn * 255.999999) as u8
+            (range.rev.min, (-1.0 * nn * 255.999999) as u8)
         }
     );
-    dmxChannels[offset] = mode;
+    buffer[offset] = mode;
     // TODO: mapped channels, in case direction and rotation are noncontiguous!
-    dmxChannels[offset + 1] = speed;
+    buffer[offset + 1] = speed;
     (mode, speed)
 }
 
