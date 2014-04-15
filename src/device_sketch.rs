@@ -423,11 +423,11 @@ struct DeviceEndpoint {
 // -----------------------------------------------------------------------------
 // Low-level wrapping, normalization, and limiting functions
 
-// TODO: is it possible to have a generic decl for sort_double_*64 without using
+// TODO: is it possible to have a generic decl for pairsort_*64 without using
 // pointers?
 
 // reorder (a, b) to (b, a) if b > a
-fn sort_double_i64(a: i64, b: i64) -> (i64, i64) {
+fn pairsort_i64(a: i64, b: i64) -> (i64, i64) {
     if a < b {
         (b, a)
     } else {
@@ -436,7 +436,7 @@ fn sort_double_i64(a: i64, b: i64) -> (i64, i64) {
 }
 
 // reorder (a, b) to (b, a) if b > a
-fn sort_double_f64(a: f64, b: f64) -> (f64, f64) {
+fn pairsort_f64(a: f64, b: f64) -> (f64, f64) {
     if a < b {
         (b, a)
     } else {
@@ -446,7 +446,7 @@ fn sort_double_f64(a: f64, b: f64) -> (f64, f64) {
 
 // call f on a and b before returning the sorted results
 fn sort_apply_f64(f: fn(f64) -> f64, a: f64, b: f64) -> (f64, f64) {
-    sort_double_f64(f(a), f(b))
+    pairsort_f64(f(a), f(b))
 }
 
 // Given a toroidal Float value, wrap it around if it is out of the range 0...1.0 (incl.).
@@ -493,6 +493,17 @@ fn fVecTorusBiWrap(n: f64) -> f64 {
     }
 }
 
+fn unipolar_unit_limit_f64_to_u8(n: f64) -> u8 {
+    if n >= 1.0 {
+        1
+    } else if n <= 0.0 {
+        0
+    } else {
+        // TODO just a sketch - maximize precision
+        (x * 255.999999) as u8
+    }
+}
+
 fn fLimitUniUnit(n: f64) -> f64 {
     if n >= 1.0 {
         1.0
@@ -500,6 +511,17 @@ fn fLimitUniUnit(n: f64) -> f64 {
         0.0
     } else {
         n
+    }
+}
+
+fn bipolar_unit_limit_f64_to_u8(n: f64) -> u8 {
+    if n >= 1.0 {
+        1
+    } else if n <= -1.0 {
+        -1
+    } else {
+        // TODO just a sketch - maximize precision
+        (255.999999 * (n + 1.0) / 2.0) as u8
     }
 }
 
@@ -547,7 +569,7 @@ fn iVecTorusWrap(n: i64, minimum: i64, maximum: i64) -> i64 {
 
 fn iVecTorusMedian(a: i64, b: i64, minimum: i64, maximum: i64) -> i64 {
     // Clamp the input values, for sanity (TEMP?)
-    let (aa, bb) = sort_double_i64(iVecTorusWrap(a, minimum, maximum),
+    let (aa, bb) = pairsort_i64(iVecTorusWrap(a, minimum, maximum),
                                    iVecTorusWrap(b, minimum, maximum));
 
     let rng = maximum - minimum + 1;
@@ -780,6 +802,173 @@ fn fblendVecTorusUniMedian(a: f64, b: f64) -> f64 {
 fn fblendVecTorusBiMedian(a: f64, b: f64) -> f64 {
     _fblendVecTorusMedian(fVecTorusBiWrap, a, b)
 }
+
+//------------------------------------------------------------------------------
+// DMX renderers
+
+// skipping old 'Array' and 'ArrayMapped' renderers because hopefully we can
+// just use a tree renderer, map every leaf, and forget the array vs. non-array
+// distinction. specifically, skipped these items from DMXAttributeRenderers.rb:
+//    def Model::renderDMXFloatArray(attribute,floatArray,dmxChannels,fixture=nil)
+//    def Model::renderDMXFloatArrayMapped(attribute,floatArray,dmxChannels,fixture=nil)
+//    def Model::renderDMXDoubleArrayBigEndian(attribute,doubleArray,dmxChannels,fixture=nil)
+//    def Model::renderDMXDoubleArrayBipolarBigEndian(attribute,doubleArray,dmxChannels,fixture=nil)
+//    def Model::renderDMXDoubleArrayBigEndianInterlaced(attribute,doubleArray,dmxChannels,fixture=nil,fineChannelOffset=0)
+//    also skipped this # TODO: renderDMXDoubleArrayBipolarBigEndianInterlaced
+
+// fLimitUniUnit
+// fLimitBiUnit
+// fn bipolar_unit_limit_f64_to_u8(n: f64) -> u8 {
+// fn unipolar_unit_limit_f64_to_u8(n: f64) -> u8 {
+
+// Write a single unipolar value to the DMX channel at attribute.offset.
+// Clip x to the range [0..1.0].
+// TODO rename - put 'unipolar' in the name
+fn renderDMXFloat(n: f64, offset: u16, buffer: &[u8]) {
+    // TODO exception handling for out of range offset (here and below)
+    buffer[offset] = unipolar_unit_limit_f64_to_u8(n);
+}
+
+// Write a single bipolar values to the DMX channels at attribute.offset.
+//
+// Assume x is a number in the range [-1.0..1.0].
+// Out of range values are clipped to this range (for now).
+//
+// The mapping is linear. For example,
+//   x=0 maps to the channel value 127.
+//   x=-1.0 maps to the channel value 0.
+//   x=1.0 maps to the channel value 255.
+fn renderDMXFloatBipolar(n: f64, offset: u16, buffer: &[u8]) {
+    buffer[offset] = bipolar_unit_limit_f64_to_u8(n);
+}
+
+// Write a single bipolar value to the DMX channel at offset.
+//
+// Clip values to [-1.0..1.0].
+//
+// range -- a bipolar range matrix, as a 5x2 sequence in this form:
+// [
+//   min: [ -1 min,  -1 max],
+//   neg: [>-1 min, < 0 max],
+//   mid: [  0 min,   0 max],
+//   pos: [> 0 min, < 1 max],
+//   max: [  1 min,   1 max],
+// ]
+//
+// Each cell represents a channel value, and each row represents a range.
+// This range format permits more than one channel value to represent a given
+// value of x. We need this information in order to interpret incoming DMX
+// datastreams.
+//
+// For example,
+//   x =-1.0 maps to the channel value specified at attribute.range[0][0]
+//   Negative intermediate values are mapped linearly from r[1][0] to r[1][1].
+//   x = 0.0 maps to the channel value specified at attribute.range[2][0]
+//   Positive intermediate values are mapped linearly from r[3][0] to r[3][1].
+//   x = 1.0 maps to the channel value specified at attribute.range[3][1]
+//
+// Reverse ranges (where low values map to high channel values) are accepted.
+//
+// TODO: finish, test behavior of reverse ranges. Looking at the code for
+// the *WithRange methods, it seems like I just 'heal' them instead of
+// properly interpreting them.
+struct BipolarChannelValueRangeMatrix<T> {
+    // N.B. neg.min may be greater than neg.max, or pos.min may be greater than
+    // pos.max, inverting the interpolation for the respective subrange.
+    // See renderDMXFloatBipolarWithRange for details.
+    min: Range<T>, // Values equivalent to -1.0
+    neg: Range<T>, // Values in the range (-1.0..0.0), exclusive
+    mid: Range<T>, // Values equivalent to 0.0
+    pos: Range<T>, // Values in the range (0.0..1.0), exclusive
+    max: Range<T>, // Values equivalent to 1.0
+}
+
+fn renderDMXFloatBipolarWithRange(n: f64, &range: BipolarChannelValueRangeMatrix<u8>, offset: u16, buffer: &[u8]) {
+    let nn = bipolar_unit_limit_f64_to_u8(n);
+    buffer.offset = (
+        if nn == 0.0 {
+            // TODO consider adding some tolerance for the zero notch? Or perhaps
+            // this should just be the responsibility of the UI.
+            range.mid.min;
+        } else if nn < 0.0 {
+            if nn <= -1.0 {
+                range.min.min;
+            } else {
+                // nn is negative
+                // Invert the interpolation if needed.
+                let (rmin, rmax) = pairsort_i16(range.neg.min, range.neg.max);
+                // TODO: maximize precision
+                let delta = (rmax - rmin) as i64 + 0.999999;
+                // TODO verify rounding (see also below)
+                rmax + (nn * delta) as u8;
+            }
+        } else {
+            if nn >= -1.0 {
+                range.max.min
+            } else {
+                // nn is positive
+                let (rmin, rmax) = pairsort_i16(range.pos.min, range.pos.max);
+                // TODO maximize precision
+                let delta = (rmax - rmin) as i64 + 0.999999
+                rmin + (x * delta) as u8
+            }
+        }
+    )
+}
+
+// Write a single unipolar value to the DMX channel at offset.
+//
+// Clip nn to the range [0.0..1.0].
+//
+// range -- a unipolar range matrix, as a 3x2 sequence in this form:
+// [
+//   min: [ 0 min, 0 max],
+//   mid: [>0 min,<1 max],
+//   max: [ 1 min, 1 max],
+// ]
+//
+// Each cell represents a channel value, and each row represents a range.
+// This range format permits more than one channel value to represent a given
+// value of x. We need this information in order to interpret incoming DMX
+// datastreams.
+//
+// For example,
+//   x=0 maps to the channel value specified at attribute.range[0][0]
+//   x=1.0 maps to the channel value specified at attribute.range[2][0]
+//   Intermediate values are mapped linearly from r[1][0] to r[1][1].
+//
+// Reverse ranges (where low values map to high channel values) are accepted.
+struct UnipolarChannelValueRangeMatrix<T> {
+    // N.B. mid.min may be greater than mid.max, inverting the interpolation.
+    // See renderDMXFloatWithRange for details.
+    min: Range<T>, // Values equivalent to 0.0
+    mid: Range<T>, // Values in the range (0.0.. 1.0), exclusive
+    max: Range<T>, // Values equivalent to 1.0
+}
+
+fn renderDMXFloatWithRange(n: f64, &range: UnipolarChannelValueRangeMatrix<u8>, offset: u16, buffer: &[u8]) {
+    let nn = unipolar_unit_limit_f64_to_u8(n);
+    buffer.offset = (
+        if nn <= 0.0 {
+            range.min.min
+        } else if nn >= 1.0 {
+            range.max.min
+        } else {
+            // Invert the interpolation if needed.
+            let (rmin, rmax) = pairsort_i16(range.mid.min, range.mid.max)
+            // TODO: just a sketch; make this precise
+            let delta = (r_max - r_min) as f64 + 0.999999
+            // TODO: verify distribution of values over u8 range after rounding
+            rmin + (nn * delta) as u8;
+        }
+    )
+}
+
+
+// IDEA: Topo structure
+//   \- blender methods (as named attributes pointing to functions)
+//          \- clobber
+//          \- max
 
 // dimensions of variation:
 //    blenders:
