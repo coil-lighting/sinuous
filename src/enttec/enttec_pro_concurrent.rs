@@ -137,8 +137,13 @@ impl<T: Send> Flush<T> for Receiver<T> {
 			// if disconnected, say so
 			Disconnected => { return Disconnected; }
 			// if the port is empty, block until the port has data
-			// note that if the port disconnects while we're here the task will fail
-			Empty => { return Data(self.recv()); }
+			// use recv_opt to handle the port disconnecting
+			Empty => {
+				match self.recv_opt() {
+					Some(d) => return Data(d),
+					None => return Disconnected
+				}
+			}
 			// if the port has data, read until we reach the end and return last
 			Data(d) => {
 
