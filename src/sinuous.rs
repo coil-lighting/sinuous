@@ -1,18 +1,17 @@
 #![crate_id = "sinuous#0.01"]
 
-// Nude pencil drawings of basic libsinuous constructs.
+//! Nude pencil drawings of basic libsinuous constructs.
 //
 // This is just a napkin sketch for the port of rbld50 core from Ruby to Rust.
 // There is a LOT more to come. Fortunately the Ruby stuff mostly tests and runs
 // okay.
 //
-// This is not a well-organized, well-documented or well thought out module.
+// This is not a well-organized, well-documented or well thought out module yet.
 // It is only my very first Ruby program since FuzzBuzz and Hello, World.
 // Please don't take it too seriously.
 //
-// It compiled under 0.9. Doesn't yet under 0.10-pre, thanks to changes to
-// hashmap.
-
+// It compiled under 0.10-pre.
+//
 // # Comments that look like this are just copied verbatim from the Ruby version.
 // # They do not necessarily pertain to this Rust version. Just for reference
 // # while I try to port this.
@@ -23,6 +22,12 @@ extern crate collections;
 //use std::num::Primitive;
 //use std::u64;
 use collections::HashMap;
+use range::DmxRange;
+
+mod numeric;
+mod range;
+mod render;
+mod blend;
 
 // using enums as unions for now, hopefully this is ok. TODO: check memory layout
 
@@ -141,37 +146,8 @@ enum DmxAddressOffset {
     //  a map or an array or an int... anything else?
     DmxAddressOffsetSingle(u32), // TODO constrain to positive u32? really positive u9.
     DmxAddressOffsetMultiple(~[u32]),
-    DmxAddressOffsetMap(HashMap<~str, u32>),
+    DmxAddressOffsetMap(HashMap<~str, u32>), // TODO Is it really necessary to use a hashmap here?
 }
-
-// # dmx_range -- The range for this attribute's value. May be multidimensional.
-// # Informs the low-level rendering function how to interpret this
-// # Attribute's value in terms of the output protocol.
-// #
-// # If this is a continuous polar attr, it should probably be a tuple like
-// #   ((0,1), (2,125), (126,128))
-// #   ...that is...
-// #   ((min_min, min_max), (min+1_min, max-1_max), (max_min, max_max))
-// #
-// # Bipolar attribute probably has this structure
-// #   ((negative_min,negative_max),(neutral_min,neutral_max),(positive_min,positive_max))
-// #
-// # Min and max can be ascending, equal,or descending like so
-// #   ((255, 255), (254, 130), (129, 129))
-// #
-// # If this is a boolean, it should be
-// #   ((false_min,false_max),(true_min,true_max))
-// # ...where _min is always <= _max
-// #
-// # TODO: If this Attribute is an int or index type, shouldn't it take a
-// # range matrix of ((val0_min,val0_max),(val1_min,val1_max)) and so on?
-
-struct Range <T> {
-    min: T,
-    max: T,
-}
-
-type DmxValueRange = Range<u8>;
 
 // Matrix-mappable effect ((sub)sub)type (hint) metadata (EXPERIMENTAL).
 // Conceptually, types, subtypes, and subsubtypes exist in a 3D space of
@@ -261,13 +237,13 @@ enum EffectSubsubtype {
 /// struct DmxMap {
 ///     addresses: ~[u8], // 1 or more, relative to profile not universe
 ///     offset: ~[DmxAddressOffset], // e.g. pan is channel 3
-///     ranges: ~[DmxValueRange], // e.g. pack pan into value 127...256
+///     ranges: ~[DmxRange], // e.g. pack pan into value 127...256
 /// }
 
 struct DmxMap {
     address: u8, // profile not universe
     offset: DmxAddressOffset, // e.g. pan is channel 3
-    ranges: DmxValueRange, // e.g. pack pan into value 127...256
+    ranges: DmxRange, // e.g. pack pan into value 127...256
 }
 
 struct Attribute {

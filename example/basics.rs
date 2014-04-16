@@ -89,9 +89,9 @@ fn marco_polo_sequentially() {
     }
 }
 
-// Load up all the CPU cores for a few seconds by marcopoloing a million times
+// Load up all the CPU cores for a fraction of a second by marcopoloing a million times
 fn marco_polo_concurrently() {
-    for _ in range(0, 1000000) {
+    for _ in range(0, 10000) {
         // stdout always prints -- is it because tests only capture stdout from
         // their own tasks? ...and this is running (maybe partially?) in a
         // different set of tasks?
@@ -107,6 +107,34 @@ fn test_marco_polo_sequentially() {
 #[test]
 fn test_marco_polo_concurrently() {
     marco_polo_concurrently();
+}
+
+#[test]
+fn test_conditional_expression() {
+    let x: int = 10;
+    let y: int =
+        if x > 5 {
+            1
+        } else {
+            2
+        };
+    assert!(y==1);
+}
+
+fn assign_array_zero(n: u8, a: &mut[u8]) -> u8 {
+    a[0] = n; // unfortunately this evaluates to null / ()
+    a[0]
+}
+
+#[test]
+fn test_array_assignment_return_value() {
+    // Why is the following Vec construction deprecated?
+    let mut a: ~[u8] = ~[11, 22, 33];
+    let n: u8 = 44;
+    let m: u8 = assign_array_zero(n, a);
+    assert!(a[0] == n);
+    assert!(m == n);
+    assert!(m == 44);
 }
 
 fn main() {
