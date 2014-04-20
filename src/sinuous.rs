@@ -1,16 +1,17 @@
-// Nude pencil drawings of basic libsinuous constructs.
+#![crate_id = "sinuous#0.01"]
+
+//! Nude pencil drawings of basic libsinuous constructs.
 //
 // This is just a napkin sketch for the port of rbld50 core from Ruby to Rust.
 // There is a LOT more to come. Fortunately the Ruby stuff mostly tests and runs
 // okay.
 //
-// This is not a well-organized, well-documented or well thought out module.
+// This is not a well-organized, well-documented or well thought out module yet.
 // It is only my very first Ruby program since FuzzBuzz and Hello, World.
 // Please don't take it too seriously.
 //
-// It compiled under 0.9. Doesn't yet under 0.10-pre, thanks to changes to
-// hashmap.
-
+// It compiled under 0.10-pre.
+//
 // # Comments that look like this are just copied verbatim from the Ruby version.
 // # They do not necessarily pertain to this Rust version. Just for reference
 // # while I try to port this.
@@ -21,6 +22,12 @@ extern crate collections;
 //use std::num::Primitive;
 //use std::u64;
 use collections::HashMap;
+use range::DmxRange;
+
+mod numeric;
+mod range;
+mod render;
+mod blend;
 
 // using enums as unions for now, hopefully this is ok. TODO: check memory layout
 
@@ -139,37 +146,8 @@ enum DmxAddressOffset {
     //  a map or an array or an int... anything else?
     DmxAddressOffsetSingle(u32), // TODO constrain to positive u32? really positive u9.
     DmxAddressOffsetMultiple(~[u32]),
-    DmxAddressOffsetMap(HashMap<~str, u32>),
+    DmxAddressOffsetMap(HashMap<~str, u32>), // TODO Is it really necessary to use a hashmap here?
 }
-
-// # dmx_range -- The range for this attribute's value. May be multidimensional.
-// # Informs the low-level rendering function how to interpret this
-// # Attribute's value in terms of the output protocol.
-// #
-// # If this is a continuous polar attr, it should probably be a tuple like
-// #   ((0,1), (2,125), (126,128))
-// #   ...that is...
-// #   ((min_min, min_max), (min+1_min, max-1_max), (max_min, max_max))
-// #
-// # Bipolar attribute probably has this structure
-// #   ((negative_min,negative_max),(neutral_min,neutral_max),(positive_min,positive_max))
-// #
-// # Min and max can be ascending, equal,or descending like so
-// #   ((255, 255), (254, 130), (129, 129))
-// #
-// # If this is a boolean, it should be
-// #   ((false_min,false_max),(true_min,true_max))
-// # ...where _min is always <= _max
-// #
-// # TODO: If this Attribute is an int or index type, shouldn't it take a
-// # range matrix of ((val0_min,val0_max),(val1_min,val1_max)) and so on?
-
-struct Range <T> {
-    min: T,
-    max: T,
-}
-
-type DmxValueRange = Range<u8>;
 
 // Matrix-mappable effect ((sub)sub)type (hint) metadata (EXPERIMENTAL).
 // Conceptually, types, subtypes, and subsubtypes exist in a 3D space of
@@ -259,13 +237,13 @@ enum EffectSubsubtype {
 /// struct DmxMap {
 ///     addresses: ~[u8], // 1 or more, relative to profile not universe
 ///     offset: ~[DmxAddressOffset], // e.g. pan is channel 3
-///     ranges: ~[DmxValueRange], // e.g. pack pan into value 127...256
+///     ranges: ~[DmxRange], // e.g. pack pan into value 127...256
 /// }
 
 struct DmxMap {
     address: u8, // profile not universe
     offset: DmxAddressOffset, // e.g. pan is channel 3
-    ranges: DmxValueRange, // e.g. pack pan into value 127...256
+    ranges: DmxRange, // e.g. pack pan into value 127...256
 }
 
 struct Attribute {
@@ -417,369 +395,12 @@ struct DeviceEndpoint {
     value: AttributeValue,
 }
 
-// -----------------------------------------------------------------------------
-// first stab at porting AttributeBlenderMethods.rb
-
-// -----------------------------------------------------------------------------
-// Low-level wrapping, normalization, and limiting functions
-
-// TODO: is it possible to have a generic decl for sort_double_*64 without using
-// pointers?
-
-// reorder (a, b) to (b, a) if b > a
-fn sort_double_i64(a: i64, b: i64) -> (i64, i64) {
-    if a < b {
-        (b, a)
-    } else {
-        (a, b)
-    }
-}
-
-// reorder (a, b) to (b, a) if b > a
-fn sort_double_f64(a: f64, b: f64) -> (f64, f64) {
-    if a < b {
-        (b, a)
-    } else {
-        (a, b)
-    }
-}
-
-// call f on a and b before returning the sorted results
-fn sort_apply_f64(f: fn(f64) -> f64, a: f64, b: f64) -> (f64, f64) {
-    sort_double_f64(f(a), f(b))
-}
-
-// Given a toroidal Float value, wrap it around if it is out of the range 0...1.0 (incl.).
-fn fVecTorusUniWrap(n: f64) -> f64 {
-    // do not *always* fmod, or 1.0 is out of range
-    if n > 1.0 {
-        // TODO: verify Rust's % works like Ruby % modulo
-        // https://github.com/mozilla/rust/issues/4565
-        // https://github.com/mozilla/rust/pull/5990
-        // In Python this had to be "1.0 + fmod(n,1.0)"
-        if n % 1.0 == 0.0 {
-            // Map 2.0 => 1.0, not => 0.0, so we can hit 1.0
-            1.0
-        } else {
-            n % 1.0
-        }
-    } else if n < 0.0 {
-        if n % 1.0 == 1.0 {
-            0.0
-        } else {
-            n % 1.0
-        }
-    } else {
-        n
-    }
-}
-
-// Given a toroidal Float value, wrap it around if it is out of the range -1.0...1.0 (incl.).
-fn fVecTorusBiWrap(n: f64) -> f64 {
-    // do not *always* fmod, or 1.0 is out of range
-    if n > 1.0 {
-        let m = (n + 1.0) % 2.0;
-        if m == 0.0 {
-            // map 3.0 => 1.0 rather than -1.0
-            1.0
-        } else {
-            m - 1.0
-        }
-    } else if n < -1.0 {
-        // in python, this was 1.0 + fmod(n + 1.0,2.0)
-        ((n+1.0) % 2.0) - 1.0
-    } else {
-        n
-    }
-}
-
-fn fLimitUniUnit(n: f64) -> f64 {
-    if n >= 1.0 {
-        1.0
-    } else if n <= 0.0 {
-        0.0
-    } else {
-        n
-    }
-}
-
-fn fLimitBiUnit(n: f64) -> f64 {
-    if n >= 1.0 {
-        1.0
-    } else if n <= -1.0 {
-        -1.0
-    } else {
-        n
-    }
-}
-
-fn iVecEuclidLimit(n: i64, minimum: i64, maximum: i64) -> i64 {
-    if n >= maximum {
-        maximum
-    } else if n <= minimum {
-        minimum
-    } else {
-        n
-    }
-}
-
-fn iVecTorusWrap(n: i64, minimum: i64, maximum: i64) -> i64 {
-    if n > maximum {
-        let d = 1 + maximum - minimum;
-        let mut nn = n;
-        while nn > maximum {
-            // FIXME: convert to i64-friendly multiplication after a test is written
-            nn -= d;
-        }
-        nn
-    } else if n < minimum {
-        let d = 1 + maximum - minimum;
-        let mut nn = n;
-        while nn > maximum {
-            // FIXME: see above
-            nn += d;
-        }
-        nn
-    } else {
-        n
-    }
-}
-
-fn iVecTorusMedian(a: i64, b: i64, minimum: i64, maximum: i64) -> i64 {
-    // Clamp the input values, for sanity (TEMP?)
-    let (aa, bb) = sort_double_i64(iVecTorusWrap(a, minimum, maximum),
-                                   iVecTorusWrap(b, minimum, maximum));
-
-    let rng = maximum - minimum + 1;
-    let d = aa - bb;
-
-    let highRoad: f64 = (rng - d) as f64 / 2.0;
-    let lowRoad: f64 = d as f64 / 2.0;
-
-    // choose the shortest route
-    if highRoad < lowRoad {
-        // wrap it around
-        let n: i64 = (aa as f64 + highRoad).round() as i64;
-        if n > maximum {
-            n - rng
-        } else {
-            n
-        }
-    } else {
-        (aa as f64 - lowRoad).round() as i64
-    }
-    // TODO unit test for this to verify rounding
-}
-
-fn iblendVecEuclidAdd(a: i64, b: i64, minimum: i64, maximum: i64) -> i64 {
-    iVecEuclidLimit(a + b, minimum, maximum)
-}
-
-fn iblendVecEuclidSubtract(a: i64, b: i64, minimum: i64, maximum: i64) -> i64 {
-    iVecEuclidLimit(a - b, minimum, maximum)
-}
-
-// this could be simplified for cases where minimum is always 0.
-fn iblendVecTorusAdd(a: i64, b: i64, minimum: i64, maximum: i64) -> i64 {
-    iVecTorusWrap(a + b, minimum, maximum)
-}
-
-// this could be simplified for cases where minimum is always 0.
-fn iblendVecTorusSubtract(a: i64, b: i64, minimum: i64, maximum: i64) -> i64 {
-    iVecTorusWrap(a - b, minimum, maximum)
-}
-
-// Return the average of a and b, rounding to the nearest integer.
-// Rounding of *.5 numbers (1.5, -1.5) follows the behavior of Rust's
-// round function, which rounds positive halves up and negative halves
-// down.
-fn iblendVecEuclidMedian(a: i64, b: i64, minimum: i64, maximum: i64) -> i64 {
-    iVecEuclidLimit(((a + b) as f64 / 2.0).round() as i64, minimum, maximum)
-}
-
-// TODO skipped: iblendVecEuclidMultiply (though it could be done).
-// (Let's wait until we can practically experiment.)
-
-fn iblendVecTorusMedian(a: i64, b: i64, minimum: i64, maximum: i64) -> i64 {
-    iVecTorusMedian(a, b, minimum, maximum)
-}
-
-// Given a Euclidian value a and b, return a new value which is the maximum of
-// the two.
-fn iblendVecEuclidMax(a: i64, b: i64) -> i64 {
-    if a >= b {
-        a
-    } else {
-        b
-    }
-}
-
-// Given a Euclidian value a and b, return a new value which is the minimum of
-// the two.
-fn iblendVecEuclidMin(a: i64, b: i64) -> i64 {
-    if a < b {
-        a
-    } else {
-        b
-    }
-}
-
-// If abs(a) is greater than b, return a, else b. If a and b have the
-// same absolute value, return a.
-fn iblendVecEuclidAbsMax(a: i64, b: i64) -> i64 {
-    if a.abs() >= b.abs() {
-        a
-    } else {
-        b
-    }
-}
-
-// Compliment of iblendVecEuclidAbsMax. If a and b have the same absolute value,
-// return b.
-fn iblendVecEuclidAbsMin(a: i64, b: i64) -> i64 {
-    if a.abs() < b.abs() {
-        a
-    } else {
-        b
-    }
-}
-
-// -----------------------------------------------------------------------------
-// Generic blenders
-
-// Given two attribute values a and b, just return a copy of a, "clobbering" b.
-fn blendClobber<T>(a: T, _b: T) -> T {
-    // XXX test that return value for >1D inputs are *copies*
-    // this used to take dims because the ruby impl switched on dims; might not
-    // be needed in rust
-    a
-}
-
-// IDEA: do away with dimensionality. make compound attributes just subtrees
-// of device space. then we can always unbundle, say, an xy effect into an x
-// and a y without having to write a separate model branch in the profile.
-// also, it gives us the option to have heterogeneous topos and datatypes
-// within a compound attribute.
-
-// IDEA: make an enum that is either a num or a List<num>,
-// write a generic list dupper if somehow it doesn't already exist,
-// don't even take dims -- its purpose seems to be to differentiate between
-// 1Ds, which show up as primitives, and >1Ds, which show us as sequences
 
 
-
-// -----------------------------------------------------------------------------
-// Float blenders
-
-// TODO: some of these might be made generic on primitives like this:
-// pub fn abs<T: Signed>(value: T) -> T
-// If we can do this without pointers, do so in a separate clean-up step.
-
-// Given a Euclidian value a and b, return a new value which is the maximum of
-// the two.
-fn fblendVecEuclidMax(a: f64, b: f64) -> f64 {
-    if a >= b {
-        a
-    } else {
-        b
-    }
-}
-
-// Given a Euclidian value a and b, return a new value which is the minimum of
-// the two.
-fn fblendVecEuclidMin(a: f64, b: f64) -> f64 {
-    if a < b {
-        a
-    } else {
-        b
-    }
-}
-
-// If abs(a) is greater than b, return a, else b. If a and b have the
-// same absolute value, return a.
-fn fblendVecEuclidAbsMax(a: f64, b: f64) -> f64 {
-    if a.abs() >= b.abs() {
-        a
-    } else {
-        b
-    }
-}
-
-// Compliment of fblendVecEuclidAbsMax. If a and b have the same absolute value,
-// return b.
-fn fblendVecEuclidAbsMin(a: f64, b: f64) -> f64 {
-    if a.abs() < b.abs() {
-        a
-    } else {
-        b
-    }
-}
-
-fn fblendVecEuclidBiAdd(a: f64, b: f64) -> f64 {
-    fLimitBiUnit(a + b)
-}
-
-fn fblendVecEuclidBiSubtract(a: f64, b: f64) -> f64 {
-    fLimitBiUnit(a - b)
-}
-
-fn fblendVecEuclidUniAdd(a: f64, b: f64) -> f64 {
-    fLimitUniUnit(a + b)
-}
-
-fn fblendVecEuclidUniSubtract(a: f64, b: f64) -> f64 {
-    fLimitUniUnit(a - b)
-}
-
-fn fblendVecTorusUniAdd(a: f64, b: f64) -> f64 {
-    fVecTorusUniWrap(a + b)
-}
-
-fn fblendVecTorusUniSubtract(a: f64, b: f64) -> f64 {
-    fVecTorusUniWrap(a - b)
-}
-
-// If a + b is out of range, wrap it. centers around 0. Could be really weird.
-fn fblendVecTorusBiAdd(a: f64, b: f64) -> f64 {
-    fVecTorusBiWrap(a + b)
-}
-
-// If a - b is out of range, wrap it. centers around 0. Could be really weird.
-fn fblendVecTorusBiSubtract(a: f64, b: f64) -> f64 {
-    fVecTorusBiWrap(a - b)
-}
-
-fn fblendVecEuclidMedian(a: f64, b: f64) -> f64 {
-    // TODO - should we limit this? currently trusting that a and b are in range
-    (a + b) / 2.0
-}
-
-fn fblendVecEuclidMultiply(a: f64, b: f64) -> f64 {
-    // TODO - should we limit this? currently trusting that a and b are in range
-    a * b
-}
-
-// private impl for 2 fns below. TODO: rename
-fn _fblendVecTorusMedian(f: fn(f64) -> f64, a: f64, b: f64) -> f64 {
-    let (aa, bb) = sort_apply_f64(f, a, b);
-    let highRoad = 1.0 - aa + bb;
-    let lowRoad = aa - bb;
-
-    // choose the shortest route
-    if highRoad < lowRoad {
-        f(aa + highRoad/2.0)
-    } else {
-        (aa + bb) / 2.0
-    }
-}
-
-fn fblendVecTorusUniMedian(a: f64, b: f64) -> f64 {
-    _fblendVecTorusMedian(fVecTorusUniWrap, a, b)
-}
-
-fn fblendVecTorusBiMedian(a: f64, b: f64) -> f64 {
-    _fblendVecTorusMedian(fVecTorusBiWrap, a, b)
-}
+// IDEA: Topo structure
+//   \- blender methods (as named attributes pointing to functions)
+//          \- clobber
+//          \- max
 
 // dimensions of variation:
 //    blenders:
