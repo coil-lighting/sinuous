@@ -37,7 +37,7 @@ pub fn sort_apply_f64(f: fn(f64) -> f64, a: f64, b: f64) -> (f64, f64) {
 
 /// Given a Float value, wrap into the unipolar toroidal space, whose range is
 /// [-1.0..1.0]. Center on zero.
-pub fn wrap_torus_unipolar_f64(n: f64) -> f64 {
+pub fn wrap_ring_unipolar_f64(n: f64) -> f64 {
     // do not *always* fmod, or 1.0 is out of range
     if n > 1.0 {
         // TODO: verify Rust's % works like Ruby % modulo (also below)
@@ -63,7 +63,7 @@ pub fn wrap_torus_unipolar_f64(n: f64) -> f64 {
 
 /// Given a Float value, wrap into the bipolar toroidal space, whose range is
 /// [-1.0..1.0]. Center on zero.
-pub fn wrap_torus_bipolar_f64(n: f64) -> f64 {
+pub fn wrap_ring_bipolar_f64(n: f64) -> f64 {
     // do not *always* fmod, or 1.0 is out of range
     if n > 1.0 {
         // TODO: verify Rust's % works like Ruby % modulo (also above)
@@ -146,10 +146,10 @@ pub fn limit_euclid_i64(n: i64, minimum: i64, maximum: i64) -> i64 {
     }
 }
 
-/// Given an integer value in a torus with the specified limits, wrap the value
+/// Given an integer value in a ring with the specified limits, wrap the value
 /// into those limits.
 // FIXME: refactor minimum, maximum into a range struct
-pub fn wrap_torus_i64(n: i64, minimum: i64, maximum: i64) -> i64 {
+pub fn wrap_ring_i64(n: i64, minimum: i64, maximum: i64) -> i64 {
     if n > maximum {
         let d = 1 + maximum - minimum;
         let mut nn = n;
@@ -171,14 +171,14 @@ pub fn wrap_torus_i64(n: i64, minimum: i64, maximum: i64) -> i64 {
     }
 }
 
-/// Given two integer torus values and their limits, return the average.
+/// Given two integer ring values and their limits, return the average.
 /// Choose the shortest route. Return stable results in a tie between two
 /// antipodes.
 // FIXME: refactor minimum, maximum into a range struct
-pub fn median_torus_i64(a: i64, b: i64, minimum: i64, maximum: i64) -> i64 {
+pub fn median_ring_i64(a: i64, b: i64, minimum: i64, maximum: i64) -> i64 {
     // Clamp the input values, for sanity (TEMP?)
-    let (aa, bb) = pairsort_i64(wrap_torus_i64(a, minimum, maximum),
-                                wrap_torus_i64(b, minimum, maximum));
+    let (aa, bb) = pairsort_i64(wrap_ring_i64(a, minimum, maximum),
+                                wrap_ring_i64(b, minimum, maximum));
 
     let rng = maximum - minimum + 1;
     let d = aa - bb;

@@ -2,15 +2,9 @@
 
 use numeric::limit_bipolar_unit_f64;
 use numeric::limit_bipolar_unit_f64_to_u8;
-use numeric::limit_euclid_i64;
 use numeric::limit_unipolar_unit_f64;
 use numeric::limit_unipolar_unit_f64_to_u8;
-use numeric::median_torus_i64;
 use numeric::pairsort_u8;
-use numeric::sort_apply_f64;
-use numeric::wrap_torus_i64;
-use numeric::wrap_torus_bipolar_f64;
-use numeric::wrap_torus_unipolar_f64;
 use range::BipolarDmxRangeMatrix;
 use range::BooleanDmxRangeMatrix;
 use range::DmxRange;
@@ -55,7 +49,7 @@ pub fn renderDMXFloatBipolar(n: f64, offset: u16, buffer: &mut[u8]) -> u8 {
 // TODO: test behavior of reverse ranges.
 pub fn renderDMXFloatBipolarWithRange(n: f64, range: &BipolarDmxRangeMatrix, offset: u16, buffer: &mut[u8]) -> u8 {
     let nn = limit_bipolar_unit_f64(n);
-    buffer[offset] = (
+    buffer[offset] =
         if nn == 0.0 {
             // TODO consider adding some tolerance for the zero notch? Or perhaps
             // this should just be the responsibility of the UI.
@@ -82,8 +76,7 @@ pub fn renderDMXFloatBipolarWithRange(n: f64, range: &BipolarDmxRangeMatrix, off
                 let delta = (rmax - rmin) as f64 + 0.999999;
                 rmin + (nn * delta) as u8
             }
-        }
-    );
+        };
     buffer[offset]
 }
 
@@ -91,7 +84,7 @@ pub fn renderDMXFloatBipolarWithRange(n: f64, range: &BipolarDmxRangeMatrix, off
 // Clip n to the range [0.0..1.0].
 pub fn renderDMXFloatWithRange(n: f64, range: &UnipolarDmxRangeMatrix, offset: u16, buffer: &mut[u8]) -> u8 {
     let nn = limit_unipolar_unit_f64(n);
-    buffer[offset] = (
+    buffer[offset] =
         if nn <= 0.0 {
             range.min.min
         } else if nn >= 1.0 {
@@ -103,8 +96,7 @@ pub fn renderDMXFloatWithRange(n: f64, range: &UnipolarDmxRangeMatrix, offset: u
             let delta = (rmax - rmin) as f64 + 0.999999;
             // TODO: verify distribution of values over u8 range after rounding
             rmin + (nn * delta) as u8
-        }
-    );
+        };
     buffer[offset]
 }
 
@@ -114,7 +106,7 @@ pub fn renderDMXFloatWithRange(n: f64, range: &UnipolarDmxRangeMatrix, offset: u
 // TODO add 'BigEndian' to the name?
 pub fn renderDMXDouble(n: f64, offset: u16, buffer: &mut[u8]) -> (u8, u8) {
     let nn = limit_unipolar_unit_f64(n);
-    let (hsb, lsb) = (
+    let (hsb, lsb) =
         if nn <= 0.0 {
             (0, 0)
         } else if nn >= 1.0 {
@@ -124,8 +116,7 @@ pub fn renderDMXDouble(n: f64, offset: u16, buffer: &mut[u8]) -> (u8, u8) {
             let almost_one = (nn * 65535.999999) as u16;
             // TODO verify truncation
             (((almost_one & 0xFF00) >> 8) as u8, (almost_one & 0xFF) as u8)
-        }
-    );
+        };
     buffer[offset] = hsb;
     buffer[offset+1] = lsb;
     (hsb, lsb)
@@ -158,13 +149,12 @@ pub fn renderDMXIntIndexedWithRange(n: u16, range: &[DmxRange], offset: u16, buf
 
 // Interpret a boolean value n as a DMX channel value.
 pub fn renderDMXBooleanWithRange(n: bool, range: &BooleanDmxRangeMatrix, offset: u16, buffer: &mut[u8]) -> u8 {
-    buffer[offset] = (
+    buffer[offset] =
         if n {
             range.t.min
         } else {
             range.f.min
-        }
-    );
+        };
     buffer[offset]
 }
 
@@ -178,7 +168,7 @@ pub fn renderDMXBooleanWithRange(n: bool, range: &BooleanDmxRangeMatrix, offset:
 // Renders two channels. The first channel is mode, the next speed.
 pub fn renderDMXSpinBipolar2ChWithRange(n: f64, range: &SpinDmxRangeMatrix, offset: u16, buffer: &mut[u8]) -> (u8, u8) {
     let nn = limit_bipolar_unit_f64(n);
-    let (mode, speed) = (
+    let (mode, speed) =
         if nn == 0.0 { // motionless
             (range.stop.min, 0)
             // TODO: customizable speed range, in case 1 is still or 254 is fastest.
@@ -187,8 +177,7 @@ pub fn renderDMXSpinBipolar2ChWithRange(n: f64, range: &SpinDmxRangeMatrix, offs
             (range.fwd.min, (nn * 255.999999) as u8)
         } else { // reverse
             (range.rev.min, (-1.0 * nn * 255.999999) as u8)
-        }
-    );
+        };
     buffer[offset] = mode;
     // TODO: mapped channels, in case direction and rotation are noncontiguous!
     buffer[offset + 1] = speed;
