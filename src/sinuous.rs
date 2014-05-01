@@ -1,4 +1,6 @@
 #![crate_id = "sinuous#0.01"]
+#[allow(dead_code)];
+#[allow(non_camel_case_types)];
 
 //! Nude pencil drawings of basic libsinuous constructs.
 //

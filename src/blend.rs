@@ -5,11 +5,11 @@
 use numeric::limit_bipolar_unit_f64;
 use numeric::limit_euclid_i64;
 use numeric::limit_unipolar_unit_f64;
-use numeric::median_torus_i64;
+use numeric::median_ring_i64;
 use numeric::sort_apply_f64;
-use numeric::wrap_torus_i64;
-use numeric::wrap_torus_bipolar_f64;
-use numeric::wrap_torus_unipolar_f64;
+use numeric::wrap_ring_i64;
+use numeric::wrap_ring_bipolar_f64;
+use numeric::wrap_ring_unipolar_f64;
 
 pub fn iblendVecEuclidAdd(a: i64, b: i64, minimum: i64, maximum: i64) -> i64 {
     limit_euclid_i64(a + b, minimum, maximum)
@@ -20,13 +20,13 @@ pub fn iblendVecEuclidSubtract(a: i64, b: i64, minimum: i64, maximum: i64) -> i6
 }
 
 // this could be simplified for cases where minimum is always 0.
-pub fn iblendVecTorusAdd(a: i64, b: i64, minimum: i64, maximum: i64) -> i64 {
-    wrap_torus_i64(a + b, minimum, maximum)
+pub fn iblendVecRingAdd(a: i64, b: i64, minimum: i64, maximum: i64) -> i64 {
+    wrap_ring_i64(a + b, minimum, maximum)
 }
 
 // this could be simplified for cases where minimum is always 0.
-pub fn iblendVecTorusSubtract(a: i64, b: i64, minimum: i64, maximum: i64) -> i64 {
-    wrap_torus_i64(a - b, minimum, maximum)
+pub fn iblendVecRingSubtract(a: i64, b: i64, minimum: i64, maximum: i64) -> i64 {
+    wrap_ring_i64(a - b, minimum, maximum)
 }
 
 // Return the average of a and b, rounding to the nearest integer.
@@ -40,8 +40,8 @@ pub fn iblendVecEuclidMedian(a: i64, b: i64, minimum: i64, maximum: i64) -> i64 
 // TODO skipped: iblendVecEuclidMultiply (though it could be done).
 // (Let's wait until we can practically experiment.)
 
-pub fn iblendVecTorusMedian(a: i64, b: i64, minimum: i64, maximum: i64) -> i64 {
-    median_torus_i64(a, b, minimum, maximum)
+pub fn iblendVecRingMedian(a: i64, b: i64, minimum: i64, maximum: i64) -> i64 {
+    median_ring_i64(a, b, minimum, maximum)
 }
 
 // Given a Euclidian value a and b, return a new value which is the maximum of
@@ -171,22 +171,22 @@ pub fn fblendVecEuclidUniSubtract(a: f64, b: f64) -> f64 {
     limit_unipolar_unit_f64(a - b)
 }
 
-pub fn fblendVecTorusUniAdd(a: f64, b: f64) -> f64 {
-    wrap_torus_unipolar_f64(a + b)
+pub fn fblendVecRingUniAdd(a: f64, b: f64) -> f64 {
+    wrap_ring_unipolar_f64(a + b)
 }
 
-pub fn fblendVecTorusUniSubtract(a: f64, b: f64) -> f64 {
-    wrap_torus_unipolar_f64(a - b)
+pub fn fblendVecRingUniSubtract(a: f64, b: f64) -> f64 {
+    wrap_ring_unipolar_f64(a - b)
 }
 
 // If a + b is out of range, wrap it. centers around 0. Could be really weird.
-pub fn fblendVecTorusBiAdd(a: f64, b: f64) -> f64 {
-    wrap_torus_bipolar_f64(a + b)
+pub fn fblendVecRingBiAdd(a: f64, b: f64) -> f64 {
+    wrap_ring_bipolar_f64(a + b)
 }
 
 // If a - b is out of range, wrap it. centers around 0. Could be really weird.
-pub fn fblendVecTorusBiSubtract(a: f64, b: f64) -> f64 {
-    wrap_torus_bipolar_f64(a - b)
+pub fn fblendVecRingBiSubtract(a: f64, b: f64) -> f64 {
+    wrap_ring_bipolar_f64(a - b)
 }
 
 pub fn fblendVecEuclidMedian(a: f64, b: f64) -> f64 {
@@ -200,7 +200,7 @@ pub fn fblendVecEuclidMultiply(a: f64, b: f64) -> f64 {
 }
 
 // private impl for 2 fns below. TODO: rename
-pub fn _fblendVecTorusMedian(f: fn(f64) -> f64, a: f64, b: f64) -> f64 {
+pub fn _fblendVecRingMedian(f: fn(f64) -> f64, a: f64, b: f64) -> f64 {
     let (aa, bb) = sort_apply_f64(f, a, b);
     let highRoad = 1.0 - aa + bb;
     let lowRoad = aa - bb;
@@ -213,10 +213,10 @@ pub fn _fblendVecTorusMedian(f: fn(f64) -> f64, a: f64, b: f64) -> f64 {
     }
 }
 
-pub fn fblendVecTorusUniMedian(a: f64, b: f64) -> f64 {
-    _fblendVecTorusMedian(wrap_torus_unipolar_f64, a, b)
+pub fn fblendVecRingUniMedian(a: f64, b: f64) -> f64 {
+    _fblendVecRingMedian(wrap_ring_unipolar_f64, a, b)
 }
 
-pub fn fblendVecTorusBiMedian(a: f64, b: f64) -> f64 {
-    _fblendVecTorusMedian(wrap_torus_bipolar_f64, a, b)
+pub fn fblendVecRingBiMedian(a: f64, b: f64) -> f64 {
+    _fblendVecRingMedian(wrap_ring_bipolar_f64, a, b)
 }
