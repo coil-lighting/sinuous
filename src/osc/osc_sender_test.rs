@@ -59,7 +59,7 @@ fn main() {
 
 		if i == 4 {break;}
 
-		std::io::timer::sleep(1000);
+		//std::io::timer::sleep(1000);
 	}
 
 }

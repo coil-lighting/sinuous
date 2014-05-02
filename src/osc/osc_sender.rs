@@ -116,7 +116,9 @@ pub fn packet_to_buffer(packet: OscPacket) -> Vec<u8> {
 
 // convert a string into a null-terminated, null-padded string
 // length must be a multiple of 4 bytes!
-fn to_osc_string(mut string: ~str) -> ~str {
+fn to_osc_string(string_in: ~str) -> ~str {
+
+	let mut string = StrBuf::from_owned_str(string_in);
 
 	// add a null-terminator
 	string.push_char('\0');
@@ -124,7 +126,7 @@ fn to_osc_string(mut string: ~str) -> ~str {
 	// pad with nulls
 	pad_with_null!(string push_char string.len());
 
-	string
+	string.into_owned()
 }
 
 // write an OscArg using a given writer
