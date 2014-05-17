@@ -56,13 +56,13 @@ enum Topo {
     // Naturally continuous, values wrap, interpolation recommended.
     // Range: [0.0,1.0]
     // Example: angle of rotation
-    VectorToroidalUnipolar,
+    VectorRingUnipolar,
 
     // Naturally continuous, values wrap, interpolation recommended, with a
     // natural center point at 0.
     // Range: [-1.0,1.0]
     // Example: fully commutated pan or tilt
-    VectorToroidalBipolar,
+    VectorRingBipolar,
 
     // Naturally discontinuous, values wrap, interpolation conceivably
     // mechanically/logically meaningful, but aesthetically discouraged.
@@ -96,8 +96,8 @@ enum Topo {
 enum AttributeValue {
     VectorEuclidianUnipolarValue(f64),
     VectorEuclidianBipolarValue(f64),
-    VectorToroidalUnipolarValue(f64),
-    VectorToroidalBipolarValue(f64),
+    VectorRingUnipolarValue(f64),
+    VectorRingBipolarValue(f64),
     DiscreteRingValue(u64),
     DiscreteArrayValue(u64),
     DiscreteSetValue(u64),

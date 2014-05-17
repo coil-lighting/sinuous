@@ -35,7 +35,7 @@ pub fn sort_apply_f64(f: fn(f64) -> f64, a: f64, b: f64) -> (f64, f64) {
     pairsort_f64(f(a), f(b))
 }
 
-/// Given a Float value, wrap into the unipolar toroidal space, whose range is
+/// Given a Float value, wrap into the unipolar ring space, whose range is
 /// [-1.0..1.0]. Center on zero.
 pub fn wrap_ring_unipolar_f64(n: f64) -> f64 {
     // do not *always* fmod, or 1.0 is out of range
@@ -61,7 +61,7 @@ pub fn wrap_ring_unipolar_f64(n: f64) -> f64 {
     }
 }
 
-/// Given a Float value, wrap into the bipolar toroidal space, whose range is
+/// Given a Float value, wrap into the bipolar ring space, whose range is
 /// [-1.0..1.0]. Center on zero.
 pub fn wrap_ring_bipolar_f64(n: f64) -> f64 {
     // do not *always* fmod, or 1.0 is out of range
