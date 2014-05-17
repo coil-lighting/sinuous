@@ -25,7 +25,7 @@ fn test_astruct() {
     let ab = Ab {
         function_a: double,
 
-        // don't put "noop<i64>"" here because function_b was already defined as
+        // don't put "noop<i64>" here because function_b was already defined as
         // a fn(i64) -> i64. Restating the <i64> is just a syntax error.
         function_b: noop,
     };
