@@ -40,29 +40,27 @@ mod blend;
 // the topology array.
 // TODO formally impose ranges using constraints from the type system?
 // (Is this even possible in Rust?)
-// XXX "Vector" means "array" in Rust, but here it means "continuous"
-// TODO heterogeneous topologies in >1D attrs?
 enum Topo {
     // Naturally continuous, values bounded, interpolation recommended.
     // Range: [0.0,1.0]
     // Example: dimmer
-    VectorEuclidianUnipolar=0,
+    ContinuousEuclidianUnipolar=0,
 
     // Naturally continuous, values bounded, interpolation recommended.
     // Range: [-1.0,1.0]
     // Example: X- or Y-position on a bounded pivot or linear track
-    VectorEuclidianBipolar,
+    ContinuousEuclidianBipolar,
 
     // Naturally continuous, values wrap, interpolation recommended.
     // Range: [0.0,1.0]
     // Example: angle of rotation
-    VectorRingUnipolar,
+    ContinuousRingUnipolar,
 
     // Naturally continuous, values wrap, interpolation recommended, with a
     // natural center point at 0.
     // Range: [-1.0,1.0]
     // Example: fully commutated pan or tilt
-    VectorRingBipolar,
+    ContinuousRingBipolar,
 
     // Naturally discontinuous, values wrap, interpolation conceivably
     // mechanically/logically meaningful, but aesthetically discouraged.
@@ -94,10 +92,10 @@ enum Topo {
 // TODO: constrain according to notes in topo
 // TODO: determine wheter we can actually imply topo through default values' types
 enum AttributeValue {
-    VectorEuclidianUnipolarValue(f64),
-    VectorEuclidianBipolarValue(f64),
-    VectorRingUnipolarValue(f64),
-    VectorRingBipolarValue(f64),
+    ContinuousEuclidianUnipolarValue(f64),
+    ContinuousEuclidianBipolarValue(f64),
+    ContinuousRingUnipolarValue(f64),
+    ContinuousRingBipolarValue(f64),
     DiscreteRingValue(u64),
     DiscreteArrayValue(u64),
     DiscreteSetValue(u64),
@@ -251,7 +249,6 @@ struct DmxMap {
 struct Attribute {
     name: ~str, // e.g. "iris"
 
-    /// was topology: ~[Topo],
     topology: ~Topo,
 
     /// Experimentally eliminating dimensionality in order to simplify device
@@ -264,15 +261,7 @@ struct Attribute {
     /// to work around the atomicity of an xy 2D attribute for cases where I
     /// really just want to deal with x.
 
-    /// Specify the number of dimensions in this Attribute.
-    /// A 2D attribute (x,y) has dimensionality=2.
-    /// A 1D attribute (dimmer level) has dimensionality=1.
-    /// dimensionality: u32,
-
     effect: (EffectType, EffectSubtype, EffectSubsubtype),
-
-    // TODO is 'virtual' needed anymore? might be able to make it virtual by enabling/disabling peer subdevices
-    // virtual: bool,
 
     attribute_type: AttributeType,
     dmx: DmxMap, // TODO: or null
@@ -284,7 +273,6 @@ struct Attribute {
 
     // ONLY IF THIS ATTRIBUTE GOVERNS A MODAL CLUSTER
     //     @clusterMethod=nil
-
 }
 
 // Hypothesis: devices' descriptions are trees of ProfileElements, and this will
@@ -400,14 +388,13 @@ struct DeviceEndpoint {
 
 
 // IDEA: Topo structure
-//   \- blender methods (as named attributes pointing to functions)
+//   \- blender methods (as named attributes per MODE pointing to functions)
 //          \- clobber
 //          \- max
 
 // dimensions of variation:
 //    blenders:
 //      datatype (per dim?)
-//      vec vs. primitive (reduce to all vec?) promote to -toplevel?
 //      topo } is topo+op really one dim?
 //      op   }
 //      I think datatype+topo is really one thing, because topology is about
