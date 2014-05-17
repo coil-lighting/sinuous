@@ -9,10 +9,6 @@ fn noop<T>(x: T) -> T {
     x
 }
 
-fn _noop(x: i64) -> i64 {
-    x
-}
-
 #[test]
 fn test_double() {
     assert!(double(0) == 0);
@@ -29,7 +25,8 @@ fn test_astruct() {
     let ab = Ab {
         function_a: double,
 
-        // don't put "noop<i64>"" here because function_b was defined as fn(i64) -> i64
+        // don't put "noop<i64>"" here because function_b was already defined as
+        // a fn(i64) -> i64. Restating the <i64> is just a syntax error.
         function_b: noop,
     };
     let fa = ab.function_a;
