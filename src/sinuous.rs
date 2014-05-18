@@ -142,33 +142,33 @@ enum EffectType {
 // because of the way they were wired up in Python.
 enum EffectSubtype {
       Other               =  0,
-      ColorspaceRgb       =  1,
-      ColorspaceHsb       =  2,
-      ColorspaceRgbi      =  3,
-      ColorspaceRgbw      =  4,
-      ColorspaceRgbaw     =  5,
+      ColorspaceRgb       =  1, // red + green + blue
+      ColorspaceHsb       =  2, // hue + saturation + brightness
+      ColorspaceRgbi      =  3, // i = intensity multiplied
+      ColorspaceRgbw      =  4, // w = white added
+      ColorspaceRgbaw     =  5, // a = amber added
       ColorspaceHsl       =  6,
-      Colorspace1x        =  7,
-      Colorspace2x        =  8,
-      Colorspace3x        =  9,
+      Colorspace1x        =  7, // one mono filter such as a dichro
+      Colorspace2x        =  8, // two mono filters
+      Colorspace3x        =  9, // etc.
       Colorspace4x        = 10,
       Colorspace5x        = 11,
-      ColorspaceI1x       = 12,
-      ColorspaceI2x       = 13,
-      ColorspaceI3x       = 14,
+      ColorspaceI1x       = 12, // intensity + one mono filter such as a dichro
+      ColorspaceI2x       = 13, // intensity + two mono filters
+      ColorspaceI3x       = 14, // etc.
       ColorspaceI4x       = 15,
       ColorspaceI5x       = 16,
-      Colorspace_i        = 17,
-      Transform_rotate    = 18,
-      Transform_scroll    = 19,
-      Transform_translate = 20,
-      Filter_misc         = 21, // e.g. an effects wheel where each slot does something different
-      Filter_multiply     = 22, // e.g. prism, pyramid mirror, barrel mirror, moonflower mirror, disco ball
-      Filter_distort      = 23, // e.g. textured glass
-      Filter_subtract     = 24, // e.g. vignette, gobo
-      Filter_add          = 25, // e.g. laser on technobeam
-      Orientation_mirror  = 26,
-      Orientation_yoke    = 27,
+      ColorspaceI         = 17, // just intensity, a.k.a. grayscale or dimmer
+      TransformRotate     = 18,
+      TransformScroll     = 19,
+      TransformTranslate  = 20,
+      FilterMisc          = 21, // e.g. an effects wheel where each slot does something different
+      FilterMultiply      = 22, // e.g. prism, pyramid mirror, barrel mirror, moonflower mirror, disco ball
+      FilterDistort       = 23, // e.g. textured glass
+      FilterSubtract      = 24, // e.g. vignette, gobo
+      FilterAdd           = 25, // e.g. laser on technobeam
+      OrientationMirror   = 26,
+      OrientationYoke     = 27,
  }
 // TODO add frame leaf order / orientation? NSEW, NESW... (N=North, S=South...)
 // Or just impose a normal leaf order and allow offset map to scramble it?

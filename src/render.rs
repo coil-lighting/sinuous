@@ -11,6 +11,12 @@ use range::DmxRange;
 use range::SpinDmxRangeMatrix;
 use range::UnipolarDmxRangeMatrix;
 
+// Note: these things say 'render DMX', but really they mean 'render byte(s)'
+// ...with little or no modification, then can write to any &mut[u8], for
+// example an OPC channel (which is like a MIDI channel, akin to a DMX universe)
+// listens to 8bit subpixel values, just with a much larger 'universe size'
+// (per OPC channel).
+
 // skipping old 'Array' and 'ArrayMapped' renderers because hopefully we can
 // just use a tree renderer, map every leaf, and forget the array vs. non-array
 // distinction. specifically, skipped these items from DMXAttributeRenderers.rb:
