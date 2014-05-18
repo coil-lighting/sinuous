@@ -200,3 +200,36 @@ pub fn renderDmxSpinBipolar2ChWithRange(n: f64, range: &SpinDmxRangeMatrix, offs
     buffer[offset + 1] = speed;
     (mode, speed)
 }
+
+pub enum DmxAttributeRenderer {
+    DmxFloatRenderer(fn(n: f64, offset: uint, buffer: &mut[u8]) -> u8),
+
+    DmxFloatBipolarWithRangeRenderer(
+        fn(n: f64, range: &BipolarDmxRangeMatrix, offset: uint, buffer: &mut[u8]) -> u8,
+        BipolarDmxRangeMatrix
+    ),
+
+    // TODO get consistent about 'Uni' vs. 'Unipolar' in fn names
+    DmxFloatUnipolarWithRangeRenderer(
+        fn(n: f64, range: &UnipolarDmxRangeMatrix, offset: uint, buffer: &mut[u8]) -> u8,
+        UnipolarDmxRangeMatrix
+    ),
+
+    DmxDoubleRenderer(fn(n: f64, offset: uint, buffer: &mut[u8]) -> (u8, u8)),
+
+    DmxIntIndexedWithRangeRenderer(
+        fn(n: uint, range: &[DmxRange], offset: uint, buffer: &mut[u8]) -> u8,
+        DmxRange
+    ),
+
+    DmxBooleanWithRangeRenderer(
+        fn(n: bool, range: &BooleanDmxRangeMatrix, offset: uint, buffer: &mut[u8]) -> u8,
+        BooleanDmxRangeMatrix
+    ),
+
+    DmxSpinBipolar2ChWithRangeRenderer(
+        fn(n: f64, range: &SpinDmxRangeMatrix, offset: uint, buffer: &mut[u8]) -> (u8, u8),
+        SpinDmxRangeMatrix
+    ),
+}
+

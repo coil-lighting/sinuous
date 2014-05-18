@@ -22,17 +22,16 @@ extern crate collections;
 
 use collections::HashMap;
 use range::DmxRange;
+use render::DmxAttributeRenderer;
 use topo::Topo;
-use range::UnipolarDmxRangeMatrix;
-use range::BipolarDmxRangeMatrix;
-use range::BooleanDmxRangeMatrix;
-use range::SpinDmxRangeMatrix;
+use world::Loc;
 
+mod blend;
 mod numeric;
 mod range;
 mod render;
-mod blend;
 mod topo;
+mod world;
 
 // Named subtypes for the primitive storage representing the numeric value for
 // a Device Attribute's instance.
@@ -156,38 +155,6 @@ enum EffectSubsubtype {
     Duration  = 2, // e.g. mspeed smoothing time
 }
 
-enum DmxAttributeRenderer {
-    DmxFloatRenderer(fn(n: f64, offset: uint, buffer: &mut[u8]) -> u8),
-
-    DmxFloatBipolarWithRangeRenderer(
-        fn(n: f64, range: &BipolarDmxRangeMatrix, offset: uint, buffer: &mut[u8]) -> u8,
-        BipolarDmxRangeMatrix
-    ),
-
-    // TODO get consistent about 'Uni' vs. 'Unipolar' in fn names
-    DmxFloatUnipolarWithRangeRenderer(
-        fn(n: f64, range: &UnipolarDmxRangeMatrix, offset: uint, buffer: &mut[u8]) -> u8,
-        UnipolarDmxRangeMatrix
-    ),
-
-    DmxDoubleRenderer(fn(n: f64, offset: uint, buffer: &mut[u8]) -> (u8, u8)),
-
-    DmxIntIndexedWithRangeRenderer(
-        fn(n: uint, range: &[DmxRange], offset: uint, buffer: &mut[u8]) -> u8,
-        DmxRange
-    ),
-
-    DmxBooleanWithRangeRenderer(
-        fn(n: bool, range: &BooleanDmxRangeMatrix, offset: uint, buffer: &mut[u8]) -> u8,
-        BooleanDmxRangeMatrix
-    ),
-
-    DmxSpinBipolar2ChWithRangeRenderer(
-        fn(n: f64, range: &SpinDmxRangeMatrix, offset: uint, buffer: &mut[u8]) -> (u8, u8),
-        SpinDmxRangeMatrix
-    ),
-}
-
 struct DmxMap {
     offset: DmxAddressOffset, // channel offset with the profile, e.g. pan @ ch3
     range: DmxRange, // e.g. pack pan into value 127...256
@@ -267,22 +234,6 @@ enum Addr {
     // ...
 }
 
-struct Position {
-    x: f64,
-    y: f64,
-    z: f64,
-}
-
-struct Orientation {
-    pan: f64,  // yaw
-    tilt: f64, // pitch
-    roll: f64, // roll
-}
-
-struct Loc {
-    position: Position,
-    orientation: Orientation,
-}
 
 // TODO better name
 struct DevicePatch {
