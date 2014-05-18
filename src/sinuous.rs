@@ -20,16 +20,16 @@
 
 extern crate collections;
 
-use collections::HashMap;
+use dmx::DmxAddr;
+use dmx::DmxMap;
 use effect::EffectType;
 use effect::EffectSubtype;
 use effect::EffectSubsubtype;
-use range::DmxRange;
-use render::DmxAttributeRenderer;
 use topo::Topo;
 use world::Loc;
 
 mod blend;
+mod dmx;
 mod effect;
 mod numeric;
 mod range;
@@ -51,34 +51,6 @@ enum AttributeValue {
     // ModalParent          ,// => LrenderDMXModalParent,
     // IndexVirtual         ,// => LrenderDMXVirtual,
     // Cluster              ,// => LrenderDMXCluster,
-
-// # dmx_offset - Specifies insertion order within the serialized output.
-// # For DMX, this specifies byte offset (AKA channel offset) within the
-// # fixture's data array. Offset may be an int or a sequence of ints.
-// # If dmx_offset is an int, then this Attribute's rendered data is packed
-// # sequentially starting at the given offset. If dmx_offset is an int
-// # sequence, then this Attribute's rendered data occupies multiple channels
-// # which are not necessarily contiguous. Each rendered datum is rendered at
-// # its corresponding offset. For example, datum[2] would be rendered at
-// # offset[2]. This typically happens in a CMYK profile where K is not
-// # adjacent to C+M+Y. Only certain attribute types require mapped-
-// # multichannel (sequential) dmx_offsets; see also
-// # DMXAttributeRenderers.attributeTypes.
-// #
-// # It is the responsibility of self.renderDMX() to interpret dmx_offset.
-enum DmxAddressOffset {
-    //  a map or an array or an int... anything else?
-    DmxAddressOffsetSingle(uint),
-    DmxAddressOffsetMultiple(~[uint]),
-    DmxAddressOffsetMap(HashMap<~str, uint>), // TODO Is it really necessary to use a hashmap here? I sure hope not.
-}
-
-
-struct DmxMap {
-    offset: DmxAddressOffset, // channel offset with the profile, e.g. pan @ ch3
-    range: DmxRange, // e.g. pack pan into value 127...256
-    renderer: DmxAttributeRenderer,
-}
 
 struct Attribute {
     name: ~str, // e.g. "iris"
@@ -135,15 +107,6 @@ struct ProfileBranch {
     children: ~[ProfileNode],
 }
 
-// hopefully generalize this to be any output port, not just a dmx universe
-struct DmxUniverse {
-    id: u32, // TEMP
-}
-
-struct DmxAddr {
-    universe: DmxUniverse,
-    address: uint, // TODO: statically constrain if possible
-}
 
 enum Addr {
     DmxAddrType(DmxAddr), // TODO universe + address
