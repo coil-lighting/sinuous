@@ -77,7 +77,6 @@ struct ProfileBranch {
     children: ~[ProfileNode],
 }
 
-
 enum Addr {
     DmxAddrType(DmxAddr), // TODO universe + address
     // Midi_addrType,
@@ -85,7 +84,6 @@ enum Addr {
     // OpenPixelControlAddrType,
     // ...
 }
-
 
 // TODO better name
 struct DevicePatch {
@@ -111,6 +109,17 @@ struct DevicePatch {
 //
 // 3) A logical device which is part of the scenegraph. Maybe 'SceneDevice'?
 
+// TODO - optional custom labels for each node? currently just default to profile node labels
+struct DeviceBranch {
+    profile_branch: Box<ProfileBranch>,
+    children: ~[DeviceNode]
+}
+
+struct DeviceEndpoint {
+    attribute: Box<Attribute>,
+    value: Option<AttributeValue>, // required if rendering is implemented for this attribute
+}
+
 // A device is an actual instance of a device. A device is described by its
 // Profile tree.
 enum DeviceNode {
@@ -128,15 +137,4 @@ struct Device {
     // multiple physical devices all share the same address.)
     patches: ~[DevicePatch],
     root: Box<DeviceNode>,
-}
-
-// TODO - optional custom labels for each node? currently just default to profile node labels
-struct DeviceBranch {
-    profile_branch: Box<ProfileBranch>,
-    children: ~[Device]
-}
-
-struct DeviceEndpoint {
-    attribute: Box<Attribute>,
-    value: Option<AttributeValue>, // required if rendering is implemented for this attribute
 }

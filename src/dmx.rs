@@ -33,9 +33,11 @@ pub struct DmxMap {
 pub struct DmxUniverse {
     // Just a sketch...
     id: u32, // TEMP
+    name: ~str
 }
 
 pub struct DmxAddr {
-    universe: DmxUniverse, // might need to box this baby
+    // FUTURE: consider what it would take to render safely in parallel
+    universe: Box<DmxUniverse>,
     address: uint, // TODO: statically constrain to 0..511 if possible
 }
