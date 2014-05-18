@@ -25,34 +25,34 @@ extern crate collections;
 //use std::u64;
 use collections::HashMap;
 use range::DmxRange;
-use blend::fblendClobber;
-use blend::fblendEuclidMax;
-use blend::fblendEuclidMin;
-use blend::fblendEuclidMedian;
-use blend::fblendRingUniMedian;
-use blend::fblendRingBiMedian;
-use blend::fblendEuclidMultiply;
-use blend::fblendEuclidUniAdd;
-use blend::fblendRingUniAdd;
-use blend::fblendEuclidBiAdd;
-use blend::fblendRingBiAdd;
-use blend::fblendEuclidUniSubtract;
-use blend::fblendRingUniSubtract;
-use blend::fblendEuclidBiSubtract;
-use blend::fblendRingBiSubtract;
+use blend::fblend_clobber;
+use blend::fblend_euclid_max;
+use blend::fblend_euclid_min;
+use blend::fblend_euclid_median;
+use blend::fblend_ring_uni_median;
+use blend::fblend_ring_bi_median;
+use blend::fblend_euclid_multiply;
+use blend::fblend_euclid_uni_add;
+use blend::fblend_ring_uni_add;
+use blend::fblend_euclid_bi_add;
+use blend::fblend_ring_bi_add;
+use blend::fblend_euclid_uni_subtract;
+use blend::fblend_ring_uni_subtract;
+use blend::fblend_euclid_bi_subtract;
+use blend::fblend_ring_bi_subtract;
 
-use blend::iblendClobber;
-use blend::iblendEuclidMax;
-use blend::iblendEuclidMin;
-use blend::iblendEuclidMedian;
-use blend::iblendRingMedian;
-use blend::iblendRingAdd;
-use blend::iblendEuclidAdd;
-use blend::iblendRingSubtract;
-use blend::iblendEuclidSubtract;
+use blend::iblend_clobber;
+use blend::iblend_euclid_max;
+use blend::iblend_euclid_min;
+use blend::iblend_euclid_median;
+use blend::iblend_ring_median;
+use blend::iblend_ring_add;
+use blend::iblend_euclidAdd;
+use blend::iblend_ring_subtract;
+use blend::iblend_euclid_subtract;
 
 // Doesn't work due to compiler bug fictitious type ty_param ... in sizing_type_of() ... task 'rustc' failed at 'Box<Any>', /Users/m/src/rust/src/libsyntax/diagnostic.rs:162
-// use blend::blendClobber;
+// use blend::blend_clobber;
 
 mod numeric;
 mod range;
@@ -82,13 +82,13 @@ enum Topo {
     // Naturally continuous, values wrap, interpolation recommended.
     // Range: [0.0,1.0]
     // Example: angle of rotation
-    ContinuousRingUnipolar,
+    Continuous_ring_unipolar,
 
     // Naturally continuous, values wrap, interpolation recommended, with a
     // natural center point at 0.
     // Range: [-1.0,1.0]
     // Example: fully commutated pan or tilt
-    ContinuousRingBipolar,
+    Continuousring_bipolar,
 
     // Naturally discontinuous, values wrap, interpolation conceivably
     // mechanically/logically meaningful, but aesthetically discouraged.
@@ -169,17 +169,17 @@ static continuousEuclidianUnipolar_: Topo_ = Topo_ {
     blend_encouraged: true,
     blend_meaningful: true,
     blenders: ContinuousBlenders(ContinuousBlenderTable {
-        clobber: fblendClobber,
-        max: fblendEuclidMax,
-        min: fblendEuclidMin,
-        median: fblendEuclidMedian,
-        add: fblendEuclidUniAdd,
-        subtract: fblendEuclidUniSubtract,
-        add_modulus: fblendRingUniAdd,
-        subtract_modulus: fblendRingUniSubtract,
-        multiply: fblendEuclidMultiply,
-        abs_max: fblendEuclidMax,
-        abs_min: fblendEuclidMin,
+        clobber: fblend_clobber,
+        max: fblend_euclid_max,
+        min: fblend_euclid_min,
+        median: fblend_euclid_median,
+        add: fblend_euclid_uni_add,
+        subtract: fblend_euclid_uni_subtract,
+        add_modulus: fblend_ring_uni_add,
+        subtract_modulus: fblend_ring_uni_subtract,
+        multiply: fblend_euclid_multiply,
+        abs_max: fblend_euclid_max,
+        abs_min: fblend_euclid_min,
     })
 };
 
@@ -190,38 +190,38 @@ static continuousEuclidianBipolar_: Topo_ = Topo_ {
     blend_encouraged: true,
     blend_meaningful: true,
     blenders: ContinuousBlenders(ContinuousBlenderTable {
-        clobber: fblendClobber,
-        max: fblendEuclidMax,
-        min: fblendEuclidMin,
-        median: fblendEuclidMedian,
-        add: fblendEuclidBiAdd,
-        subtract: fblendEuclidBiSubtract,
-        add_modulus: fblendRingBiAdd,
-        subtract_modulus: fblendRingBiSubtract,
-        multiply: fblendEuclidMultiply,
-        abs_max: fblendEuclidMax,
-        abs_min: fblendEuclidMin,
+        clobber: fblend_clobber,
+        max: fblend_euclid_max,
+        min: fblend_euclid_min,
+        median: fblend_euclid_median,
+        add: fblend_euclid_bi_add,
+        subtract: fblend_euclid_bi_subtract,
+        add_modulus: fblend_ring_bi_add,
+        subtract_modulus: fblend_ring_bi_subtract,
+        multiply: fblend_euclid_multiply,
+        abs_max: fblend_euclid_max,
+        abs_min: fblend_euclid_min,
     })
 };
 
 // // Naturally continuous, values wrap, interpolation recommended.
 // // Range: [0.0,1.0]
 // // Example: angle of rotation
-static continuousRingUnipolar_: Topo_ = Topo_ {
+static continuous_ring_unipolar_: Topo_ = Topo_ {
     blend_encouraged: true,
     blend_meaningful: true,
     blenders: ContinuousBlenders(ContinuousBlenderTable {
-        clobber: fblendClobber,
-        max: fblendEuclidMax,
-        min: fblendEuclidMin,
-        median: fblendRingUniMedian,
-        add: fblendRingUniAdd,
-        subtract: fblendRingUniSubtract,
-        add_modulus: fblendRingUniAdd,
-        subtract_modulus: fblendRingUniSubtract,
-        multiply: fblendEuclidMultiply,
-        abs_max: fblendEuclidMax,
-        abs_min: fblendEuclidMin,
+        clobber: fblend_clobber,
+        max: fblend_euclid_max,
+        min: fblend_euclid_min,
+        median: fblend_ring_uni_median,
+        add: fblend_ring_uni_add,
+        subtract: fblend_ring_uni_subtract,
+        add_modulus: fblend_ring_uni_add,
+        subtract_modulus: fblend_ring_uni_subtract,
+        multiply: fblend_euclid_multiply,
+        abs_max: fblend_euclid_max,
+        abs_min: fblend_euclid_min,
     })
 };
 
@@ -229,21 +229,21 @@ static continuousRingUnipolar_: Topo_ = Topo_ {
 // // natural center point at 0.
 // // Range: [-1.0,1.0]
 // // Example: fully commutated pan or tilt
-static continuousRingBipolar_: Topo_ = Topo_ {
+static continuousring_bipolar_: Topo_ = Topo_ {
     blend_encouraged: true,
     blend_meaningful: true,
     blenders: ContinuousBlenders(ContinuousBlenderTable {
-        clobber: fblendClobber,
-        max: fblendEuclidMax,
-        min: fblendEuclidMin,
-        median: fblendRingBiMedian,
-        add: fblendRingBiAdd,
-        subtract: fblendRingBiSubtract,
-        add_modulus: fblendRingBiAdd,
-        subtract_modulus: fblendRingBiSubtract,
-        multiply: fblendEuclidMultiply,
-        abs_max: fblendEuclidMax,
-        abs_min: fblendEuclidMin,
+        clobber: fblend_clobber,
+        max: fblend_euclid_max,
+        min: fblend_euclid_min,
+        median: fblend_ring_bi_median,
+        add: fblend_ring_bi_add,
+        subtract: fblend_ring_bi_subtract,
+        add_modulus: fblend_ring_bi_add,
+        subtract_modulus: fblend_ring_bi_subtract,
+        multiply: fblend_euclid_multiply,
+        abs_max: fblend_euclid_max,
+        abs_min: fblend_euclid_min,
     })
 };
 
@@ -260,17 +260,17 @@ static discreteRing_: Topo_ = Topo_ {
     blend_encouraged: false,
     blend_meaningful: true,
     blenders: DiscreteBlenders(DiscreteBlenderTable {
-        clobber: iblendClobber,
-        max: iblendEuclidMax,
-        min: iblendEuclidMin,
-        median: iblendRingMedian,
-        add: iblendRingAdd,
-        subtract: iblendRingSubtract,
-        add_modulus: iblendRingAdd,
-        subtract_modulus: iblendRingSubtract,
+        clobber: iblend_clobber,
+        max: iblend_euclid_max,
+        min: iblend_euclid_min,
+        median: iblend_ring_median,
+        add: iblend_ring_add,
+        subtract: iblend_ring_subtract,
+        add_modulus: iblend_ring_add,
+        subtract_modulus: iblend_ring_subtract,
         multiply: iblend_TODO,
-        abs_max: iblendEuclidMax,
-        abs_min: iblendEuclidMin,
+        abs_max: iblend_euclid_max, // or _abs_max if we don't want to restrict range >= 0
+        abs_min: iblend_euclid_min, // ditto
     })
 };
 
@@ -282,17 +282,17 @@ static discreteArray_: Topo_ = Topo_ {
     blend_encouraged: false,
     blend_meaningful: true,
     blenders: DiscreteBlenders(DiscreteBlenderTable {
-        clobber: iblendClobber,
-        max: iblendEuclidMax,
-        min: iblendEuclidMin,
-        median: iblendEuclidMedian,
-        add: iblendEuclidAdd,
-        subtract: iblendEuclidSubtract,
-        add_modulus: iblendEuclidAdd,
-        subtract_modulus: iblendEuclidSubtract,
+        clobber: iblend_clobber,
+        max: iblend_euclid_max,
+        min: iblend_euclid_min,
+        median: iblend_euclid_median,
+        add: iblend_euclidAdd,
+        subtract: iblend_euclid_subtract,
+        add_modulus: iblend_euclidAdd,
+        subtract_modulus: iblend_euclid_subtract,
         multiply: iblend_TODO,
-        abs_max: iblendEuclidMax,
-        abs_min: iblendEuclidMin,
+        abs_max: iblend_euclid_max, // or _abs_max if we don't want to restrict range >= 0
+        abs_min: iblend_euclid_min, // ditto
     })
 };
 
@@ -305,17 +305,17 @@ static discreteSet_: Topo_ = Topo_ {
     blend_meaningful: false,
     blenders: DiscreteBlenders(DiscreteBlenderTable {
         // Same as discreteArray, e.g. for glitching between modes
-        clobber: iblendClobber,
-        max: iblendEuclidMax,
-        min: iblendEuclidMin,
-        median: iblendEuclidMedian,
-        add: iblendEuclidAdd,
-        subtract: iblendEuclidSubtract,
-        add_modulus: iblendEuclidAdd,
-        subtract_modulus: iblendEuclidSubtract,
+        clobber: iblend_clobber,
+        max: iblend_euclid_max,
+        min: iblend_euclid_min,
+        median: iblend_euclid_median,
+        add: iblend_euclidAdd,
+        subtract: iblend_euclid_subtract,
+        add_modulus: iblend_euclidAdd,
+        subtract_modulus: iblend_euclid_subtract,
         multiply: iblend_TODO,
-        abs_max: iblendEuclidMax,
-        abs_min: iblendEuclidMin,
+        abs_max: iblend_euclid_max, // or _abs_max if we don't want to restrict range >= 0
+        abs_min: iblend_euclid_min, // ditto
     })
 };
 
@@ -333,8 +333,8 @@ static discreteSet_: Topo_ = Topo_ {
 enum AttributeValue {
     ContinuousEuclidianUnipolarValue(f64),
     ContinuousEuclidianBipolarValue(f64),
-    ContinuousRingUnipolarValue(f64),
-    ContinuousRingBipolarValue(f64),
+    Continuous_ring_unipolarValue(f64),
+    Continuousring_bipolarValue(f64),
     DiscreteRingValue(u64),
     DiscreteArrayValue(u64),
     DiscreteSetValue(u64),
@@ -551,7 +551,7 @@ struct DmxAddr {
 
 enum Addr {
     DmxAddrType(DmxAddr), // TODO universe + address
-    // MidiAddrType,
+    // Midi_addrType,
     // OscAddrType,
     // ...
 }
@@ -583,7 +583,7 @@ struct DevicePatch {
 }
 
 // There seem to be three layers of deviceness:
-// 1) A 'physical' device, or rather a specific instance, i.e. one animated model
+// 1) A 'physical' device, or rather a specific instance, i.e. one ani_mated model
 // in an external editor or one fixture on a tree.
 // 2) An 'output' device (for lack of a better name), which is an addressed
 // device on a specific universe. Whether we want to allow multiple output ports

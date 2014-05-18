@@ -12,25 +12,25 @@ use numeric::wrap_ring_bipolar_f64;
 use numeric::wrap_ring_unipolar_f64;
 
 // Given two attribute values a and b, just return a copy of a, "clobbering" b.
-pub fn iblendClobber(a:i64, _b:i64) -> i64 {
+pub fn iblend_clobber(a:i64, _b:i64) -> i64 {
     a
 }
 
-pub fn iblendEuclidAdd(a: i64, b: i64, minimum: i64, maximum: i64) -> i64 {
+pub fn iblend_euclidAdd(a: i64, b: i64, minimum: i64, maximum: i64) -> i64 {
     limit_euclid_i64(a + b, minimum, maximum)
 }
 
-pub fn iblendEuclidSubtract(a: i64, b: i64, minimum: i64, maximum: i64) -> i64 {
+pub fn iblend_euclid_subtract(a: i64, b: i64, minimum: i64, maximum: i64) -> i64 {
     limit_euclid_i64(a - b, minimum, maximum)
 }
 
 // this could be simplified for cases where minimum is always 0.
-pub fn iblendRingAdd(a: i64, b: i64, minimum: i64, maximum: i64) -> i64 {
+pub fn iblend_ring_add(a: i64, b: i64, minimum: i64, maximum: i64) -> i64 {
     wrap_ring_i64(a + b, minimum, maximum)
 }
 
 // this could be simplified for cases where minimum is always 0.
-pub fn iblendRingSubtract(a: i64, b: i64, minimum: i64, maximum: i64) -> i64 {
+pub fn iblend_ring_subtract(a: i64, b: i64, minimum: i64, maximum: i64) -> i64 {
     wrap_ring_i64(a - b, minimum, maximum)
 }
 
@@ -38,20 +38,20 @@ pub fn iblendRingSubtract(a: i64, b: i64, minimum: i64, maximum: i64) -> i64 {
 // Rounding of *.5 numbers (1.5, -1.5) follows the behavior of Rust's
 // round function, which rounds positive halves up and negative halves
 // down.
-pub fn iblendEuclidMedian(a: i64, b: i64, minimum: i64, maximum: i64) -> i64 {
+pub fn iblend_euclid_median(a: i64, b: i64, minimum: i64, maximum: i64) -> i64 {
     limit_euclid_i64(((a + b) as f64 / 2.0).round() as i64, minimum, maximum)
 }
 
-// TODO skipped: iblendEuclidMultiply (though it could be done).
+// TODO skipped: iblend_euclid_multiply (though it could be done).
 // (Let's wait until we can practically experiment.)
 
-pub fn iblendRingMedian(a: i64, b: i64, minimum: i64, maximum: i64) -> i64 {
+pub fn iblend_ring_median(a: i64, b: i64, minimum: i64, maximum: i64) -> i64 {
     median_ring_i64(a, b, minimum, maximum)
 }
 
 // Given a Euclidian value a and b, return a new value which is the maximum of
 // the two.
-pub fn iblendEuclidMax(a: i64, b: i64) -> i64 {
+pub fn iblend_euclid_max(a: i64, b: i64) -> i64 {
     if a >= b {
         a
     } else {
@@ -61,7 +61,7 @@ pub fn iblendEuclidMax(a: i64, b: i64) -> i64 {
 
 // Given a Euclidian value a and b, return a new value which is the minimum of
 // the two.
-pub fn iblendEuclidMin(a: i64, b: i64) -> i64 {
+pub fn iblend_euclid_min(a: i64, b: i64) -> i64 {
     if a < b {
         a
     } else {
@@ -71,7 +71,7 @@ pub fn iblendEuclidMin(a: i64, b: i64) -> i64 {
 
 // If abs(a) is greater than b, return a, else b. If a and b have the
 // same absolute value, return a.
-pub fn iblendEuclidAbsMax(a: i64, b: i64) -> i64 {
+pub fn iblend_euclid_abs_max(a: i64, b: i64) -> i64 {
     if a.abs() >= b.abs() {
         a
     } else {
@@ -79,9 +79,9 @@ pub fn iblendEuclidAbsMax(a: i64, b: i64) -> i64 {
     }
 }
 
-// Compliment of iblendEuclidAbsMax. If a and b have the same absolute value,
+// Compliment of iblend_euclid_abs_max. If a and b have the same absolute value,
 // return b.
-pub fn iblendEuclidAbsMin(a: i64, b: i64) -> i64 {
+pub fn iblend_euclid_abs_min(a: i64, b: i64) -> i64 {
     if a.abs() < b.abs() {
         a
     } else {
@@ -111,13 +111,13 @@ pub fn iblendEuclidAbsMin(a: i64, b: i64) -> i64 {
 // Work around a 0.11-pre compiler bug by not using generics.
 
 // Given two attribute values a and b, just return a copy of a, "clobbering" b.
-pub fn fblendClobber(a:f64, _b:f64) -> f64 {
+pub fn fblend_clobber(a:f64, _b:f64) -> f64 {
     a
 }
 
 // Given a Euclidian value a and b, return a new value which is the maximum of
 // the two.
-pub fn fblendEuclidMax(a: f64, b: f64) -> f64 {
+pub fn fblend_euclid_max(a: f64, b: f64) -> f64 {
     if a >= b {
         a
     } else {
@@ -127,7 +127,7 @@ pub fn fblendEuclidMax(a: f64, b: f64) -> f64 {
 
 // Given a Euclidian value a and b, return a new value which is the minimum of
 // the two.
-pub fn fblendEuclidMin(a: f64, b: f64) -> f64 {
+pub fn fblend_euclid_min(a: f64, b: f64) -> f64 {
     if a < b {
         a
     } else {
@@ -137,7 +137,7 @@ pub fn fblendEuclidMin(a: f64, b: f64) -> f64 {
 
 // If abs(a) is greater than b, return a, else b. If a and b have the
 // same absolute value, return a.
-pub fn fblendEuclidAbsMax(a: f64, b: f64) -> f64 {
+pub fn fblend_euclidAbsMax(a: f64, b: f64) -> f64 {
     if a.abs() >= b.abs() {
         a
     } else {
@@ -145,9 +145,9 @@ pub fn fblendEuclidAbsMax(a: f64, b: f64) -> f64 {
     }
 }
 
-// Compliment of fblendEuclidAbsMax. If a and b have the same absolute value,
+// Compliment of fblend_euclidAbsMax. If a and b have the same absolute value,
 // return b.
-pub fn fblendEuclidAbsMin(a: f64, b: f64) -> f64 {
+pub fn fblend_euclidAbsMin(a: f64, b: f64) -> f64 {
     if a.abs() < b.abs() {
         a
     } else {
@@ -155,52 +155,52 @@ pub fn fblendEuclidAbsMin(a: f64, b: f64) -> f64 {
     }
 }
 
-pub fn fblendEuclidBiAdd(a: f64, b: f64) -> f64 {
+pub fn fblend_euclid_bi_add(a: f64, b: f64) -> f64 {
     limit_bipolar_unit_f64(a + b)
 }
 
-pub fn fblendEuclidBiSubtract(a: f64, b: f64) -> f64 {
+pub fn fblend_euclid_bi_subtract(a: f64, b: f64) -> f64 {
     limit_bipolar_unit_f64(a - b)
 }
 
-pub fn fblendEuclidUniAdd(a: f64, b: f64) -> f64 {
+pub fn fblend_euclid_uni_add(a: f64, b: f64) -> f64 {
     limit_unipolar_unit_f64(a + b)
 }
 
-pub fn fblendEuclidUniSubtract(a: f64, b: f64) -> f64 {
+pub fn fblend_euclid_uni_subtract(a: f64, b: f64) -> f64 {
     limit_unipolar_unit_f64(a - b)
 }
 
-pub fn fblendRingUniAdd(a: f64, b: f64) -> f64 {
+pub fn fblend_ring_uni_add(a: f64, b: f64) -> f64 {
     wrap_ring_unipolar_f64(a + b)
 }
 
-pub fn fblendRingUniSubtract(a: f64, b: f64) -> f64 {
+pub fn fblend_ring_uni_subtract(a: f64, b: f64) -> f64 {
     wrap_ring_unipolar_f64(a - b)
 }
 
 // If a + b is out of range, wrap it. centers around 0. Could be really weird.
-pub fn fblendRingBiAdd(a: f64, b: f64) -> f64 {
+pub fn fblend_ring_bi_add(a: f64, b: f64) -> f64 {
     wrap_ring_bipolar_f64(a + b)
 }
 
 // If a - b is out of range, wrap it. centers around 0. Could be really weird.
-pub fn fblendRingBiSubtract(a: f64, b: f64) -> f64 {
+pub fn fblend_ring_bi_subtract(a: f64, b: f64) -> f64 {
     wrap_ring_bipolar_f64(a - b)
 }
 
-pub fn fblendEuclidMedian(a: f64, b: f64) -> f64 {
+pub fn fblend_euclid_median(a: f64, b: f64) -> f64 {
     // TODO - should we limit this? currently trusting that a and b are in range
     (a + b) / 2.0
 }
 
-pub fn fblendEuclidMultiply(a: f64, b: f64) -> f64 {
+pub fn fblend_euclid_multiply(a: f64, b: f64) -> f64 {
     // TODO - should we limit this? currently trusting that a and b are in range
     a * b
 }
 
 // private impl for 2 fns below. TODO: rename
-pub fn _fblendRingMedian(f: fn(f64) -> f64, a: f64, b: f64) -> f64 {
+pub fn _fblend_ring_median(f: fn(f64) -> f64, a: f64, b: f64) -> f64 {
     let (aa, bb) = sort_apply_f64(f, a, b);
     let highRoad = 1.0 - aa + bb;
     let lowRoad = aa - bb;
@@ -213,10 +213,10 @@ pub fn _fblendRingMedian(f: fn(f64) -> f64, a: f64, b: f64) -> f64 {
     }
 }
 
-pub fn fblendRingUniMedian(a: f64, b: f64) -> f64 {
-    _fblendRingMedian(wrap_ring_unipolar_f64, a, b)
+pub fn fblend_ring_uni_median(a: f64, b: f64) -> f64 {
+    _fblend_ring_median(wrap_ring_unipolar_f64, a, b)
 }
 
-pub fn fblendRingBiMedian(a: f64, b: f64) -> f64 {
-    _fblendRingMedian(wrap_ring_bipolar_f64, a, b)
+pub fn fblend_ring_bi_median(a: f64, b: f64) -> f64 {
+    _fblend_ring_median(wrap_ring_bipolar_f64, a, b)
 }
