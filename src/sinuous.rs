@@ -22,79 +22,13 @@ extern crate collections;
 
 use collections::HashMap;
 use range::DmxRange;
-
-// Doesn't work due to compiler bug fictitious type ty_param ... in sizing_type_of() ... task 'rustc' failed at 'Box<Any>', /Users/m/src/rust/src/libsyntax/diagnostic.rs:162
-// use blend::blend_clobber;
+use topo::Topo;
 
 mod numeric;
 mod range;
 mod render;
 mod blend;
 mod topo;
-
-// using enums as unions for now, hopefully this is ok. TODO: check memory layout
-
-
-// Topology descriptors will describe the parametric range for an attribute's
-// value.
-// TODO determine whether we could use the topo types themselves as values in
-// the topology array.
-// TODO formally impose ranges using constraints from the type system?
-// (Is this even possible in Rust?)
-enum Topo {
-    // Naturally continuous, values bounded, interpolation recommended.
-    // Range: [0.0,1.0]
-    // Example: dimmer
-    ContinuousEuclidianUnipolar=0,
-
-    // Naturally continuous, values bounded, interpolation recommended.
-    // Range: [-1.0,1.0]
-    // Example: X- or Y-position on a bounded pivot or linear track
-    ContinuousEuclidianBipolar,
-
-    // Naturally continuous, values wrap, interpolation recommended.
-    // Range: [0.0,1.0]
-    // Example: angle of rotation
-    Continuous_ring_unipolar,
-
-    // Naturally continuous, values wrap, interpolation recommended, with a
-    // natural center point at 0.
-    // Range: [-1.0,1.0]
-    // Example: fully commutated pan or tilt
-    Continuousring_bipolar,
-
-    // Naturally discontinuous, values wrap, interpolation conceivably
-    // mechanically/logically meaningful, but aesthetically discouraged.
-    // Range: Int indexed from 0
-    // Example: litho index
-    DiscreteRing,
-
-    // Naturally discontinuous, values bounded, interpolation conceivably
-    // mechanically/logically meaningful, but aesthetically discouraged.
-    // Range: Int indexed from 0
-    // Example: linear 35mm slide tray index
-    DiscreteArray,
-
-    // Naturally discontinuous, values bounded, interpolation
-    // mechanically/logically inconceivable and therefore forbidden.
-    // Range: Int indexed from 0
-    // Example: color wheel mode
-    DiscreteSet,
-
-    // Topology is undefined, probably because this is a (virtual?) "cluster"
-    // parent node. TODO: expand on this, accounting for the new device model
-    // Range: null
-    // Example: TODO
-    UndefinedTopo,
-}
-
-
-// Topology is undefined, probably because this is a (virtual?) "cluster"
-// parent node. TODO: expand on this, accounting for the new device model
-// Range: null
-// Example: TODO
-// UndefinedTopo,
-
 
 // Named subtypes for the primitive storage representing the numeric value for
 // a Device Attribute's instance.
@@ -103,14 +37,16 @@ enum Topo {
 enum AttributeValue {
     ContinuousEuclidianUnipolarValue(f64),
     ContinuousEuclidianBipolarValue(f64),
-    Continuous_ring_unipolarValue(f64),
-    Continuousring_bipolarValue(f64),
-    DiscreteRingValue(u64),
-    DiscreteArrayValue(u64),
-    DiscreteSetValue(u64),
+    ContinuousRingUnipolarValue(f64),
+    ContinuousRingBipolarValue(f64),
 
-    // Will this really work for cluster parents? Virtual only?
-    // Does this mean that nonvirtual [...notes trail off here...] XXX
+    // TODO decide whether discrete attributes should be signed or unsigned
+    // (and propagate that decision to blend.rs)
+    DiscreteRingValue(i64),
+    DiscreteArrayValue(i64),
+    DiscreteSetValue(i64),
+
+    // For device nodes with no associated value (maybe don't need this)
     UndefinedValue(()),
 }
 
@@ -153,9 +89,9 @@ enum AttributeType {
 // # It is the responsibility of self.renderDMX() to interpret dmx_offset.
 enum DmxAddressOffset {
     //  a map or an array or an int... anything else?
-    DmxAddressOffsetSingle(u32), // TODO constrain to positive u32? really positive u9.
-    DmxAddressOffsetMultiple(~[u32]),
-    DmxAddressOffsetMap(HashMap<~str, u32>), // TODO Is it really necessary to use a hashmap here?
+    DmxAddressOffsetSingle(uint),
+    DmxAddressOffsetMultiple(~[uint]),
+    DmxAddressOffsetMap(HashMap<~str, uint>), // TODO Is it really necessary to use a hashmap here? I sure hope not.
 }
 
 // Matrix-mappable effect ((sub)sub)type (hint) metadata (EXPERIMENTAL).
@@ -250,15 +186,14 @@ enum EffectSubsubtype {
 /// }
 
 struct DmxMap {
-    address: u8, // profile not universe
+    address: uint, // profile not universe
     offset: DmxAddressOffset, // e.g. pan is channel 3
     ranges: DmxRange, // e.g. pack pan into value 127...256
 }
 
 struct Attribute {
     name: ~str, // e.g. "iris"
-
-    topology: Box<Topo>,
+    topo: Box<Topo>,
 
     /// Experimentally eliminating dimensionality in order to simplify device
     /// modeling. A (sub)Profile/sub(Device)'s dimensionality is just the
@@ -316,7 +251,7 @@ struct DmxUniverse {
 
 struct DmxAddr {
     universe: DmxUniverse,
-    address: u32, // TODO: constrain
+    address: uint, // TODO: statically constrain if possible
 }
 
 enum Addr {
@@ -353,8 +288,10 @@ struct DevicePatch {
 }
 
 // There seem to be three layers of deviceness:
+//
 // 1) A 'physical' device, or rather a specific instance, i.e. one ani_mated model
 // in an external editor or one fixture on a tree.
+//
 // 2) An 'output' device (for lack of a better name), which is an addressed
 // device on a specific universe. Whether we want to allow multiple output ports
 // per universe is a separate question. It would allow us to make a soft DMX
@@ -362,6 +299,7 @@ struct DevicePatch {
 // devices in the scenegraph. This might be called a 'logical device' or something.
 // Or a 'patched device.' (Perhaps a universe gets patched, too.)
 //     - these are managed by DevicePatches.
+//
 // 3) A logical device which is part of the scenegraph. Maybe 'SceneDevice'?
 
 // A device is an actual instance of a device. A device is described by its
@@ -394,20 +332,6 @@ struct DeviceEndpoint {
     value: AttributeValue,
 }
 
-
-
-// IDEA: Topo structure
-//   \- blender methods (as named attributes per MODE pointing to functions)
-//          \- clobber
-//          \- max
-
-// dimensions of variation:
-//    blenders:
-//      datatype (per dim?)
-//      topo } is topo+op really one dim?
-//      op   }
-//      I think datatype+topo is really one thing, because topology is about
-//      what is adjacent to something, which obviously depends on datatype
 
 fn main() {
     println!("Done.")
