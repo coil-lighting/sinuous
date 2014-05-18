@@ -46,7 +46,7 @@ pub fn renderDmxFloat(n: f64, offset: uint, buffer: &mut[u8]) -> u8 {
     buffer[offset]
 }
 
-// Write a single bipolar values to the Dmx channels at attribute.offset.
+// Write a single bipolar value to the Dmx channels at attribute.offset.
 //
 // Assume x is a number in the range [-1.0..1.0].
 // Out of range values are clipped to this range (for now).
@@ -98,6 +98,7 @@ pub fn renderDmxFloatBipolarWithRange(n: f64, range: &BipolarDmxRangeMatrix, off
 
 // Write a single unipolar value to the Dmx channel at offset.
 // Clip n to the range [0.0..1.0].
+// TODO add 'Unipolar' or 'Uni' to name
 pub fn renderDmxFloatWithRange(n: f64, range: &UnipolarDmxRangeMatrix, offset: uint, buffer: &mut[u8]) -> u8 {
     let nn = limit_unipolar_unit_f64(n);
     buffer[offset] =

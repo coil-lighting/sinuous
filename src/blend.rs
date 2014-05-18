@@ -16,7 +16,7 @@ pub fn iblend_clobber(a:i64, _b:i64) -> i64 {
     a
 }
 
-pub fn iblend_euclidAdd(a: i64, b: i64, minimum: i64, maximum: i64) -> i64 {
+pub fn iblend_euclid_add(a: i64, b: i64, minimum: i64, maximum: i64) -> i64 {
     limit_euclid_i64(a + b, minimum, maximum)
 }
 

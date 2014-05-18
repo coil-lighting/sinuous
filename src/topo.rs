@@ -20,7 +20,7 @@ use blend::iblend_euclid_min;
 use blend::iblend_euclid_median;
 use blend::iblend_ring_median;
 use blend::iblend_ring_add;
-use blend::iblend_euclidAdd;
+use blend::iblend_euclid_add;
 use blend::iblend_ring_subtract;
 use blend::iblend_euclid_subtract;
 
@@ -210,9 +210,9 @@ pub static discrete_array: Topo = Topo {
         max: iblend_euclid_max,
         min: iblend_euclid_min,
         median: iblend_euclid_median,
-        add: iblend_euclidAdd,
+        add: iblend_euclid_add,
         subtract: iblend_euclid_subtract,
-        add_modulus: iblend_euclidAdd,
+        add_modulus: iblend_euclid_add,
         subtract_modulus: iblend_euclid_subtract,
         multiply: iblend_TODO,
         abs_max: iblend_euclid_max, // or _abs_max if we don't want to restrict range >= 0
@@ -236,9 +236,9 @@ pub static discrete_set: Topo = Topo {
         max: iblend_euclid_max,
         min: iblend_euclid_min,
         median: iblend_euclid_median,
-        add: iblend_euclidAdd,
+        add: iblend_euclid_add,
         subtract: iblend_euclid_subtract,
-        add_modulus: iblend_euclidAdd,
+        add_modulus: iblend_euclid_add,
         subtract_modulus: iblend_euclid_subtract,
         multiply: iblend_TODO,
         abs_max: iblend_euclid_max, // or _abs_max if we don't want to restrict range >= 0
