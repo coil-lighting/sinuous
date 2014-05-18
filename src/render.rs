@@ -1,4 +1,4 @@
-//! DMX rendering primitives.
+//! Dmx rendering primitives.
 
 use numeric::limit_bipolar_unit_f64;
 use numeric::limit_bipolar_unit_f64_to_u8;
@@ -11,32 +11,42 @@ use range::DmxRange;
 use range::SpinDmxRangeMatrix;
 use range::UnipolarDmxRangeMatrix;
 
-// Note: these things say 'render DMX', but really they mean 'render byte(s)'
+// TODO Not sure how to get the polymorphism in DmxRangeType below:
+// pub type dmxRendererWithRange = fn(n: f64, range: &DmxRangeType, offset: uint, buffer: &mut[u8]) -> u8;
+// pub type dmxRenderer = fn(n: f64, offset: uint, buffer: &mut[u8]) -> u8;
+// DmxRangeType might be any one of these:
+//  BipolarDmxRangeMatrix
+//  UnipolarDmxRangeMatrix
+//  DmxRange
+//  BooleanDmxRangeMatrix
+//  SpinDmxRangeMatrix
+
+// Note: these things say 'render Dmx', but really they mean 'render byte(s)'
 // ...with little or no modification, then can write to any &mut[u8], for
-// example an OPC channel (which is like a MIDI channel, akin to a DMX universe)
+// example an OPC channel (which is like a MIDI channel, akin to a Dmx universe)
 // listens to 8bit subpixel values, just with a much larger 'universe size'
 // (per OPC channel).
 
 // skipping old 'Array' and 'ArrayMapped' renderers because hopefully we can
 // just use a tree renderer, map every leaf, and forget the array vs. non-array
-// distinction. specifically, skipped these items from DMXAttributeRenderers.rb:
-//    def Model::renderDMXFloatArray(attribute,floatArray,dmxChannels,fixture=nil)
-//    def Model::renderDMXFloatArrayMapped(attribute,floatArray,dmxChannels,fixture=nil)
-//    def Model::renderDMXDoubleArrayBigEndian(attribute,doubleArray,dmxChannels,fixture=nil)
-//    def Model::renderDMXDoubleArrayBipolarBigEndian(attribute,doubleArray,dmxChannels,fixture=nil)
-//    def Model::renderDMXDoubleArrayBigEndianInterlaced(attribute,doubleArray,dmxChannels,fixture=nil,fineChannelOffset=0)
-//    also skipped this # TODO: renderDMXDoubleArrayBipolarBigEndianInterlaced
+// distinction. specifically, skipped these items from DmxAttributeRenderers.rb:
+//    def Model::renderDmxFloatArray(attribute,floatArray,dmxChannels,fixture=nil)
+//    def Model::renderDmxFloatArrayMapped(attribute,floatArray,dmxChannels,fixture=nil)
+//    def Model::renderDmxDoubleArrayBigEndian(attribute,doubleArray,dmxChannels,fixture=nil)
+//    def Model::renderDmxDoubleArrayBipolarBigEndian(attribute,doubleArray,dmxChannels,fixture=nil)
+//    def Model::renderDmxDoubleArrayBigEndianInterlaced(attribute,doubleArray,dmxChannels,fixture=nil,fineChannelOffset=0)
+//    also skipped this # TODO: renderDmxDoubleArrayBipolarBigEndianInterlaced
 
-// Write a single unipolar value to the DMX channel at attribute.offset.
+// Write a single unipolar value to the Dmx channel at attribute.offset.
 // Clip x to the range [0..1.0].
 // TODO rename - put 'unipolar' in the name
-pub fn renderDMXFloat(n: f64, offset: uint, buffer: &mut[u8]) -> u8 {
+pub fn renderDmxFloat(n: f64, offset: uint, buffer: &mut[u8]) -> u8 {
     // TODO exception handling for out of range offset (here and below)
     buffer[offset] = limit_unipolar_unit_f64_to_u8(n);
     buffer[offset]
 }
 
-// Write a single bipolar values to the DMX channels at attribute.offset.
+// Write a single bipolar values to the Dmx channels at attribute.offset.
 //
 // Assume x is a number in the range [-1.0..1.0].
 // Out of range values are clipped to this range (for now).
@@ -45,15 +55,15 @@ pub fn renderDMXFloat(n: f64, offset: uint, buffer: &mut[u8]) -> u8 {
 //   x=0 maps to the channel value 127.
 //   x=-1.0 maps to the channel value 0.
 //   x=1.0 maps to the channel value 255.
-pub fn renderDMXFloatBipolar(n: f64, offset: uint, buffer: &mut[u8]) -> u8 {
+pub fn renderDmxFloatBipolar(n: f64, offset: uint, buffer: &mut[u8]) -> u8 {
     buffer[offset] = limit_bipolar_unit_f64_to_u8(n);
     buffer[offset]
 }
 
-// Write a single bipolar value to the DMX channel at offset.
+// Write a single bipolar value to the Dmx channel at offset.
 // Clip n to [-1.0..1.0].
 // TODO: test behavior of reverse ranges.
-pub fn renderDMXFloatBipolarWithRange(n: f64, range: &BipolarDmxRangeMatrix, offset: uint, buffer: &mut[u8]) -> u8 {
+pub fn renderDmxFloatBipolarWithRange(n: f64, range: &BipolarDmxRangeMatrix, offset: uint, buffer: &mut[u8]) -> u8 {
     let nn = limit_bipolar_unit_f64(n);
     buffer[offset] =
         if nn == 0.0 {
@@ -86,9 +96,9 @@ pub fn renderDMXFloatBipolarWithRange(n: f64, range: &BipolarDmxRangeMatrix, off
     buffer[offset]
 }
 
-// Write a single unipolar value to the DMX channel at offset.
+// Write a single unipolar value to the Dmx channel at offset.
 // Clip n to the range [0.0..1.0].
-pub fn renderDMXFloatWithRange(n: f64, range: &UnipolarDmxRangeMatrix, offset: uint, buffer: &mut[u8]) -> u8 {
+pub fn renderDmxFloatWithRange(n: f64, range: &UnipolarDmxRangeMatrix, offset: uint, buffer: &mut[u8]) -> u8 {
     let nn = limit_unipolar_unit_f64(n);
     buffer[offset] =
         if nn <= 0.0 {
@@ -106,11 +116,11 @@ pub fn renderDMXFloatWithRange(n: f64, range: &UnipolarDmxRangeMatrix, offset: u
     buffer[offset]
 }
 
-// Write a single unipolar value to a contiguous pair of DMX channels.
+// Write a single unipolar value to a contiguous pair of Dmx channels.
 // Clip n to the range [0..1.0].
 // This is a big-endian implementation. HSB is written first, then LSB.
 // TODO add 'BigEndian' to the name?
-pub fn renderDMXDouble(n: f64, offset: uint, buffer: &mut[u8]) -> (u8, u8) {
+pub fn renderDmxDouble(n: f64, offset: uint, buffer: &mut[u8]) -> (u8, u8) {
     let nn = limit_unipolar_unit_f64(n);
     let (hsb, lsb) =
         if nn <= 0.0 {
@@ -128,7 +138,7 @@ pub fn renderDMXDouble(n: f64, offset: uint, buffer: &mut[u8]) -> (u8, u8) {
     (hsb, lsb)
 }
 
-// Interpret an integer index n as a DMX channel value.
+// Interpret an integer index n as a Dmx channel value.
 //
 // attribute.range must be an nx2 sequence of channel value Ranges<u16>
 // aligned to valid index values, like this:
@@ -143,7 +153,7 @@ pub fn renderDMXDouble(n: f64, offset: uint, buffer: &mut[u8]) -> (u8, u8) {
 // The parameter index must be a valid integer index into attribute.range.
 // (For now, out of range indices revert to 0.)
 // TODO enum for this kind of IndexedRangeMatrix? and move relevant docs into it.
-pub fn renderDMXIntIndexedWithRange(n: uint, range: &[DmxRange], offset: uint, buffer: &mut[u8]) -> u8 {
+pub fn renderDmxIntIndexedWithRange(n: uint, range: &[DmxRange], offset: uint, buffer: &mut[u8]) -> u8 {
     if n < range.len() as uint{
         // FUTURE throw exception if index is out of range?
         buffer[offset] = 0;
@@ -153,8 +163,8 @@ pub fn renderDMXIntIndexedWithRange(n: uint, range: &[DmxRange], offset: uint, b
     buffer[offset]
 }
 
-// Interpret a boolean value n as a DMX channel value.
-pub fn renderDMXBooleanWithRange(n: bool, range: &BooleanDmxRangeMatrix, offset: uint, buffer: &mut[u8]) -> u8 {
+// Interpret a boolean value n as a Dmx channel value.
+pub fn renderDmxBooleanWithRange(n: bool, range: &BooleanDmxRangeMatrix, offset: uint, buffer: &mut[u8]) -> u8 {
     buffer[offset] =
         if n {
             range.t.min
@@ -164,7 +174,7 @@ pub fn renderDMXBooleanWithRange(n: bool, range: &BooleanDmxRangeMatrix, offset:
     buffer[offset]
 }
 
-// Render a bipolar value as two DMX channels: spin direction and spin speed.
+// Render a bipolar value as two Dmx channels: spin direction and spin speed.
 //
 // For cases where one channel is spin mode (reverse, stop, forward) and
 // the other channel is speed (zero to max, continuous).
@@ -172,7 +182,7 @@ pub fn renderDMXBooleanWithRange(n: bool, range: &BooleanDmxRangeMatrix, offset:
 // The incoming spin value n is a single float in the range [-1.0,1.0].
 //
 // Renders two channels. The first channel is mode, the next speed.
-pub fn renderDMXSpinBipolar2ChWithRange(n: f64, range: &SpinDmxRangeMatrix, offset: uint, buffer: &mut[u8]) -> (u8, u8) {
+pub fn renderDmxSpinBipolar2ChWithRange(n: f64, range: &SpinDmxRangeMatrix, offset: uint, buffer: &mut[u8]) -> (u8, u8) {
     let nn = limit_bipolar_unit_f64(n);
     let (mode, speed) =
         if nn == 0.0 { // motionless

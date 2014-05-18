@@ -222,6 +222,8 @@ pub static discrete_array: Topo = Topo {
 
 // Naturally discontinuous, values bounded, interpolation
 // mechanically/logically inconceivable and therefore forbidden.
+// Nevertheless, they can be numerically computed, so we implement them to make
+// experimenters happy -- and for uniformity.
 // Range: Int indexed from 0
 // Example: color wheel mode
 pub static discrete_set: Topo = Topo {

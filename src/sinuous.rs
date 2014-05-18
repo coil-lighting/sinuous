@@ -23,6 +23,10 @@ extern crate collections;
 use collections::HashMap;
 use range::DmxRange;
 use topo::Topo;
+use range::UnipolarDmxRangeMatrix;
+use range::BipolarDmxRangeMatrix;
+use range::BooleanDmxRangeMatrix;
+use range::SpinDmxRangeMatrix;
 
 mod numeric;
 mod range;
@@ -35,43 +39,15 @@ mod topo;
 // TODO: constrain according to notes in topo
 // TODO: determine wheter we can actually imply topo through default values' types
 enum AttributeValue {
-    ContinuousEuclidianUnipolarValue(f64),
-    ContinuousEuclidianBipolarValue(f64),
-    ContinuousRingUnipolarValue(f64),
-    ContinuousRingBipolarValue(f64),
-
-    // TODO decide whether discrete attributes should be signed or unsigned
-    // (and propagate that decision to blend.rs)
-    DiscreteRingValue(i64),
-    DiscreteArrayValue(i64),
-    DiscreteSetValue(i64),
-
-    // For device nodes with no associated value (maybe don't need this)
-    UndefinedValue(()),
+    Continuous(f64),
+    Discrete(i64), // TODO - decide whether to really make these unsigned instead
 }
 
-// TODO figure out how Rust wants us to associate functions directly with types.
-// No need to pay the price for a hash lookup on static constant associations.
-enum AttributeType {
-    // name                     *dmx* renderer (old Ruby style map)
-    ModalParent          ,// => LrenderDMXModalParent,
-    IndexVirtual         ,// => LrenderDMXVirtual,
-    Cluster              ,// => LrenderDMXCluster,
-    IndexWithRange       ,// => LrenderDMXIntIndexedWithRange,
-    BooleanWithRange     ,// => LrenderDMXBooleanWithRange,
-    Float                ,// => LrenderDMXFloat,
-    FloatBipolar         ,// => LrenderDMXFloatBipolar,
-    FloatWithRange       ,// => LrenderDMXFloatWithRange,
-    FloatBipolarWithRange,// => LrenderDMXFloatBipolarWithRange,
-    Double               ,// => LrenderDMXDouble,
-    FloatArray           ,// => LrenderDMXFloatArray,
-    DoubleArray          ,// => LrenderDMXDoubleArrayBigEndian,
-    DoubleArrayInterlaced,// => LrenderDMXDoubleArrayBigEndianInterlaced,
-    DoubleArrayBipolar   ,// => LrenderDMXDoubleArrayBipolarBigEndian,
-    FloatArrayMapped     ,// => LrenderDMXFloatArrayMapped,
-    SpinBipolar2Ch       ,// LrenderDMXSpinBipolar2ChWithRange,
-    //TODO: :doubleArrayBipolarInterlaced => :renderDMXDoubleArrayBipolarBigEndianInterlaced,
-}
+// Leftover AttributeTypes from the old DMX renderers, now refactored:
+    // // name                     *dmx* renderer (old Ruby style map)
+    // ModalParent          ,// => LrenderDMXModalParent,
+    // IndexVirtual         ,// => LrenderDMXVirtual,
+    // Cluster              ,// => LrenderDMXCluster,
 
 // # dmx_offset - Specifies insertion order within the serialized output.
 // # For DMX, this specifies byte offset (AKA channel offset) within the
@@ -114,24 +90,24 @@ enum DmxAddressOffset {
 // FIXME these probably should be structs, not constants. they were constants
 // because of the way they were wired up in Python.
 enum EffectType {
-      Misc              =   0,
-      ModeSelect        =   1,
-      Color             =   2,
-      Dimmer            =   3,
-      Relay             =   4,
-      Focus             =   5,
-      Zoom              =   6,
-      Iris              =   7,
-      Frame             =   8,
-      Strobe            =   9,
-      Position          =  10,
-      Orientation       =  11,
-      Transform         =  12,
-      FilterSelect      =  13, // e.g. litho index
-      FilterIntensity   =  14, // e.g. frost (should frost get its own filter type?)
-      Raster            =  15,
-      Control           =  16,
-      Smoothing         =  17,
+    Misc              =   0,
+    ModeSelect        =   1,
+    Color             =   2,
+    Dimmer            =   3,
+    Relay             =   4,
+    Focus             =   5,
+    Zoom              =   6,
+    Iris              =   7,
+    Frame             =   8,
+    Strobe            =   9,
+    Position          =  10,
+    Orientation       =  11,
+    Transform         =  12,
+    FilterSelect      =  13, // e.g. litho index
+    FilterIntensity   =  14, // e.g. frost (should frost get its own filter type?)
+    Raster            =  15,
+    Control           =  16,
+    Smoothing         =  17,
 }
 
 // Effect subtypes - where needed, dimensionality is separately specified.
@@ -141,83 +117,113 @@ enum EffectType {
 // FIXME these probably should be structs, not constants. they were constants
 // because of the way they were wired up in Python.
 enum EffectSubtype {
-      Other               =  0,
-      ColorspaceRgb       =  1, // red + green + blue
-      ColorspaceHsb       =  2, // hue + saturation + brightness
-      ColorspaceRgbi      =  3, // i = intensity multiplied
-      ColorspaceRgbw      =  4, // w = white added
-      ColorspaceRgbaw     =  5, // a = amber added
-      ColorspaceHsl       =  6,
-      Colorspace1x        =  7, // one mono filter such as a dichro
-      Colorspace2x        =  8, // two mono filters
-      Colorspace3x        =  9, // etc.
-      Colorspace4x        = 10,
-      Colorspace5x        = 11,
-      ColorspaceI1x       = 12, // intensity + one mono filter such as a dichro
-      ColorspaceI2x       = 13, // intensity + two mono filters
-      ColorspaceI3x       = 14, // etc.
-      ColorspaceI4x       = 15,
-      ColorspaceI5x       = 16,
-      ColorspaceI         = 17, // just intensity, a.k.a. grayscale or dimmer
-      TransformRotate     = 18,
-      TransformScroll     = 19,
-      TransformTranslate  = 20,
-      FilterMisc          = 21, // e.g. an effects wheel where each slot does something different
-      FilterMultiply      = 22, // e.g. prism, pyramid mirror, barrel mirror, moonflower mirror, disco ball
-      FilterDistort       = 23, // e.g. textured glass
-      FilterSubtract      = 24, // e.g. vignette, gobo
-      FilterAdd           = 25, // e.g. laser on technobeam
-      OrientationMirror   = 26,
-      OrientationYoke     = 27,
- }
+    Other               =  0,
+    ColorspaceRgb       =  1, // red + green + blue
+    ColorspaceHsb       =  2, // hue + saturation + brightness
+    ColorspaceRgbi      =  3, // i = intensity multiplied
+    ColorspaceRgbw      =  4, // w = white added
+    ColorspaceRgbaw     =  5, // a = amber added
+    ColorspaceHsl       =  6,
+    Colorspace1x        =  7, // one mono filter such as a dichro
+    Colorspace2x        =  8, // two mono filters
+    Colorspace3x        =  9, // etc.
+    Colorspace4x        = 10,
+    Colorspace5x        = 11,
+    ColorspaceI1x       = 12, // intensity + one mono filter such as a dichro
+    ColorspaceI2x       = 13, // intensity + two mono filters
+    ColorspaceI3x       = 14, // etc.
+    ColorspaceI4x       = 15,
+    ColorspaceI5x       = 16,
+    ColorspaceI         = 17, // just intensity, a.k.a. grayscale or dimmer
+    TransformRotate     = 18,
+    TransformScroll     = 19,
+    TransformTranslate  = 20,
+    FilterMisc          = 21, // e.g. an effects wheel where each slot does something different
+    FilterMultiply      = 22, // e.g. prism, pyramid mirror, barrel mirror, moonflower mirror, disco ball
+    FilterDistort       = 23, // e.g. textured glass
+    FilterSubtract      = 24, // e.g. vignette, gobo
+    FilterAdd           = 25, // e.g. laser on technobeam
+    OrientationMirror   = 26,
+    OrientationYoke     = 27,
+}
+
 // TODO add frame leaf order / orientation? NSEW, NESW... (N=North, S=South...)
 // Or just impose a normal leaf order and allow offset map to scramble it?
 
 enum EffectSubsubtype {
-      Value     = 0, // e.g. intensity, must be 0
-      Frequency = 1, // e.g. rotation speed
-      Duration  = 2, // e.g. mspeed smoothing time
+    Value     = 0, // e.g. intensity, must be 0
+    Frequency = 1, // e.g. rotation speed
+    Duration  = 2, // e.g. mspeed smoothing time
 }
 
-/// struct DmxMap {
-///     addresses: ~[u8], // 1 or more, relative to profile not universe
-///     offset: ~[DmxAddressOffset], // e.g. pan is channel 3
-///     ranges: ~[DmxRange], // e.g. pack pan into value 127...256
-/// }
+enum DmxAttributeRenderer {
+    DmxFloatRenderer(fn(n: f64, offset: uint, buffer: &mut[u8]) -> u8),
+
+    DmxFloatBipolarWithRangeRenderer(
+        fn(n: f64, range: &BipolarDmxRangeMatrix, offset: uint, buffer: &mut[u8]) -> u8,
+        BipolarDmxRangeMatrix
+    ),
+
+    // TODO get consistent about 'Uni' vs. 'Unipolar' in fn names
+    DmxFloatUnipolarWithRangeRenderer(
+        fn(n: f64, range: &UnipolarDmxRangeMatrix, offset: uint, buffer: &mut[u8]) -> u8,
+        UnipolarDmxRangeMatrix
+    ),
+
+    DmxDoubleRenderer(fn(n: f64, offset: uint, buffer: &mut[u8]) -> (u8, u8)),
+
+    DmxIntIndexedWithRangeRenderer(
+        fn(n: uint, range: &[DmxRange], offset: uint, buffer: &mut[u8]) -> u8,
+        DmxRange
+    ),
+
+    DmxBooleanWithRangeRenderer(
+        fn(n: bool, range: &BooleanDmxRangeMatrix, offset: uint, buffer: &mut[u8]) -> u8,
+        BooleanDmxRangeMatrix
+    ),
+
+    DmxSpinBipolar2ChWithRangeRenderer(
+        fn(n: f64, range: &SpinDmxRangeMatrix, offset: uint, buffer: &mut[u8]) -> (u8, u8),
+        SpinDmxRangeMatrix
+    ),
+}
 
 struct DmxMap {
-    address: uint, // profile not universe
-    offset: DmxAddressOffset, // e.g. pan is channel 3
-    ranges: DmxRange, // e.g. pack pan into value 127...256
+    offset: DmxAddressOffset, // channel offset with the profile, e.g. pan @ ch3
+    range: DmxRange, // e.g. pack pan into value 127...256
+    renderer: DmxAttributeRenderer,
 }
 
 struct Attribute {
     name: ~str, // e.g. "iris"
-    topo: Box<Topo>,
-
-    /// Experimentally eliminating dimensionality in order to simplify device
-    /// modeling. A (sub)Profile/sub(Device)'s dimensionality is just the
-    /// number of its children. This allows us to break down an xy cartesian
-    /// coordinate into separate x and y effects; we'll just have to decide
-    /// how to indicate that we want to blend in higher dimensions, i.e. blend
-    /// the xy branch, not x and y separately, for blend modes where x and y
-    /// are independent. This might be tricky, but it's no trickier than trying
-    /// to work around the atomicity of an xy 2D attribute for cases where I
-    /// really just want to deal with x.
-
     effect: (EffectType, EffectSubtype, EffectSubsubtype),
+    topo: Box<Topo>,
+    default: Option<AttributeValue>, // required if rendering is implemented
+    dmx: Option<DmxMap>, // required if DMX rendering is implemented
+}
 
-    attribute_type: AttributeType,
-    dmx: DmxMap, // TODO: or null
-    default: AttributeValue,
+// I experimentally eliminated dimensionality in order to simplify device
+// modeling. A (sub)Profile/sub(Device)'s dimensionality is just the
+// number of its children. This allows us to break down an xy cartesian
+// coordinate into separate x and y effects; we'll just have to decide
+// how to indicate that we want to blend in higher dimensions, i.e. blend
+// the xy branch, not x and y separately, for blend modes where x and y
+// are independent. This might be tricky, but it's no trickier than trying
+// to work around the atomicity of an xy 2D attribute for cases where I
+// really just want to deal with x. - MB
 
-    // from rb, maybe no longer needed:
-    // ONLY IF THIS ATTRIBUTE NEEDS LABELED INDICES
+// notes from rb about labeling indexed ranges:
+    // TODO - ONLY IF THIS ATTRIBUTE NEEDS LABELED INDICES
     //     @indexTable=nil // if required, a tuple of strings, one per mode, in order
+// ...but shouldn't index labels be in with the range struct?
 
+// Here's another idea from ruby. It's no longer clear how this logic will
+// pan out. Maybe we'll need to resurrect this idea because modal logic can
+// be arbitrarily complex on board the device, but hopefully we can express
+// modes through the layout of the device tree instead:
     // ONLY IF THIS ATTRIBUTE GOVERNS A MODAL CLUSTER
     //     @clusterMethod=nil
-}
+
 
 // Hypothesis: devices' descriptions are trees of ProfileElements, and this will
 // suffice to describe everything from simple, 1 dimensional, nonmodal
@@ -243,7 +249,6 @@ struct ProfileBranch {
     children: ~[ProfileNode],
 }
 
-
 // hopefully generalize this to be any output port, not just a dmx universe
 struct DmxUniverse {
     id: u32, // TEMP
@@ -258,6 +263,7 @@ enum Addr {
     DmxAddrType(DmxAddr), // TODO universe + address
     // Midi_addrType,
     // OscAddrType,
+    // OpenPixelControlAddrType,
     // ...
 }
 
@@ -329,9 +335,8 @@ struct DeviceBranch {
 
 struct DeviceEndpoint {
     attribute: Box<Attribute>,
-    value: AttributeValue,
+    value: Option<AttributeValue>, // required if rendering is implemented for this attribute
 }
-
 
 fn main() {
     println!("Done.")
