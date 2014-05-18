@@ -80,7 +80,7 @@ pub struct Topo {
 // Naturally continuous, values bounded, interpolation recommended.
 // Range: [0.0,1.0]
 // Example: dimmer
-static continuousEuclidianUnipolar_: Topo = Topo {
+static continuous_euclidian_unipolar: Topo = Topo {
     blend_encouraged: true,
     blend_meaningful: true,
     blenders: ContinuousBlenders(ContinuousBlenderTable {
@@ -101,7 +101,7 @@ static continuousEuclidianUnipolar_: Topo = Topo {
 // // Naturally continuous, values bounded, interpolation recommended.
 // // Range: [-1.0,1.0]
 // // Example: X- or Y-position on a bounded pivot or linear track
-static continuousEuclidianBipolar_: Topo = Topo {
+static continuous_euclidian_bipolar: Topo = Topo {
     blend_encouraged: true,
     blend_meaningful: true,
     blenders: ContinuousBlenders(ContinuousBlenderTable {
@@ -122,7 +122,7 @@ static continuousEuclidianBipolar_: Topo = Topo {
 // // Naturally continuous, values wrap, interpolation recommended.
 // // Range: [0.0,1.0]
 // // Example: angle of rotation
-static continuous_ring_unipolar_: Topo = Topo {
+static continuous_ring_unipolar: Topo = Topo {
     blend_encouraged: true,
     blend_meaningful: true,
     blenders: ContinuousBlenders(ContinuousBlenderTable {
@@ -144,7 +144,7 @@ static continuous_ring_unipolar_: Topo = Topo {
 // // natural center point at 0.
 // // Range: [-1.0,1.0]
 // // Example: fully commutated pan or tilt
-static continuousring_bipolar_: Topo = Topo {
+static continuous_ring_bipolar: Topo = Topo {
     blend_encouraged: true,
     blend_meaningful: true,
     blenders: ContinuousBlenders(ContinuousBlenderTable {
@@ -171,7 +171,7 @@ fn iblend_TODO(a: i64, _b: i64) -> i64 {
 // mechanically/logically meaningful, but aesthetically discouraged.
 // Range: Int indexed from 0
 // Example: litho index
-static discreteRing_: Topo = Topo {
+static discrete_ring: Topo = Topo {
     blend_encouraged: false,
     blend_meaningful: true,
     blenders: DiscreteBlenders(DiscreteBlenderTable {
@@ -193,7 +193,7 @@ static discreteRing_: Topo = Topo {
 // mechanically/logically meaningful, but aesthetically discouraged.
 // Range: Int indexed from 0
 // Example: linear 35mm slide tray index
-static discreteArray_: Topo = Topo {
+static discrete_array: Topo = Topo {
     blend_encouraged: false,
     blend_meaningful: true,
     blenders: DiscreteBlenders(DiscreteBlenderTable {
@@ -215,7 +215,7 @@ static discreteArray_: Topo = Topo {
 // mechanically/logically inconceivable and therefore forbidden.
 // Range: Int indexed from 0
 // Example: color wheel mode
-static discreteSet_: Topo = Topo {
+static discrete_set: Topo = Topo {
     blend_encouraged: false,
     blend_meaningful: false,
     blenders: DiscreteBlenders(DiscreteBlenderTable {
