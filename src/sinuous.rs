@@ -8,15 +8,15 @@
 // There is a LOT more to come. Fortunately the Ruby stuff mostly tests and runs
 // okay.
 //
-// This is not a well-organized, well-documented or well thought out module yet.
-// It is only my very first Ruby program since FuzzBuzz and Hello, World.
-// Please don't take it too seriously.
+// This is not a terribly well-organized, well-documented or well thought-out
+// module just yet. It is only my very first Rust program since FuzzBuzz and
+// Hello, World. Expect major reorganization.
 //
-// It compiled under 0.10-pre.
+// It compiled under 0.11-pre.
 //
 // # Comments that look like this are just copied verbatim from the Ruby version.
 // # They do not necessarily pertain to this Rust version. Just for reference
-// # while I try to port this.
+// # while I try to port this puppy.
 
 extern crate collections;
 
