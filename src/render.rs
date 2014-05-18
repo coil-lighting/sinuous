@@ -24,7 +24,7 @@ use range::UnipolarDmxRangeMatrix;
 // Write a single unipolar value to the DMX channel at attribute.offset.
 // Clip x to the range [0..1.0].
 // TODO rename - put 'unipolar' in the name
-pub fn renderDMXFloat(n: f64, offset: u16, buffer: &mut[u8]) -> u8 {
+pub fn renderDMXFloat(n: f64, offset: uint, buffer: &mut[u8]) -> u8 {
     // TODO exception handling for out of range offset (here and below)
     buffer[offset] = limit_unipolar_unit_f64_to_u8(n);
     buffer[offset]
@@ -39,7 +39,7 @@ pub fn renderDMXFloat(n: f64, offset: u16, buffer: &mut[u8]) -> u8 {
 //   x=0 maps to the channel value 127.
 //   x=-1.0 maps to the channel value 0.
 //   x=1.0 maps to the channel value 255.
-pub fn renderDMXFloatBipolar(n: f64, offset: u16, buffer: &mut[u8]) -> u8 {
+pub fn renderDMXFloatBipolar(n: f64, offset: uint, buffer: &mut[u8]) -> u8 {
     buffer[offset] = limit_bipolar_unit_f64_to_u8(n);
     buffer[offset]
 }
@@ -47,7 +47,7 @@ pub fn renderDMXFloatBipolar(n: f64, offset: u16, buffer: &mut[u8]) -> u8 {
 // Write a single bipolar value to the DMX channel at offset.
 // Clip n to [-1.0..1.0].
 // TODO: test behavior of reverse ranges.
-pub fn renderDMXFloatBipolarWithRange(n: f64, range: &BipolarDmxRangeMatrix, offset: u16, buffer: &mut[u8]) -> u8 {
+pub fn renderDMXFloatBipolarWithRange(n: f64, range: &BipolarDmxRangeMatrix, offset: uint, buffer: &mut[u8]) -> u8 {
     let nn = limit_bipolar_unit_f64(n);
     buffer[offset] =
         if nn == 0.0 {
@@ -82,7 +82,7 @@ pub fn renderDMXFloatBipolarWithRange(n: f64, range: &BipolarDmxRangeMatrix, off
 
 // Write a single unipolar value to the DMX channel at offset.
 // Clip n to the range [0.0..1.0].
-pub fn renderDMXFloatWithRange(n: f64, range: &UnipolarDmxRangeMatrix, offset: u16, buffer: &mut[u8]) -> u8 {
+pub fn renderDMXFloatWithRange(n: f64, range: &UnipolarDmxRangeMatrix, offset: uint, buffer: &mut[u8]) -> u8 {
     let nn = limit_unipolar_unit_f64(n);
     buffer[offset] =
         if nn <= 0.0 {
@@ -104,7 +104,7 @@ pub fn renderDMXFloatWithRange(n: f64, range: &UnipolarDmxRangeMatrix, offset: u
 // Clip n to the range [0..1.0].
 // This is a big-endian implementation. HSB is written first, then LSB.
 // TODO add 'BigEndian' to the name?
-pub fn renderDMXDouble(n: f64, offset: u16, buffer: &mut[u8]) -> (u8, u8) {
+pub fn renderDMXDouble(n: f64, offset: uint, buffer: &mut[u8]) -> (u8, u8) {
     let nn = limit_unipolar_unit_f64(n);
     let (hsb, lsb) =
         if nn <= 0.0 {
@@ -137,8 +137,8 @@ pub fn renderDMXDouble(n: f64, offset: u16, buffer: &mut[u8]) -> (u8, u8) {
 // The parameter index must be a valid integer index into attribute.range.
 // (For now, out of range indices revert to 0.)
 // TODO enum for this kind of IndexedRangeMatrix? and move relevant docs into it.
-pub fn renderDMXIntIndexedWithRange(n: u16, range: &[DmxRange], offset: u16, buffer: &mut[u8]) -> u8 {
-    if n < range.len() as u16{
+pub fn renderDMXIntIndexedWithRange(n: uint, range: &[DmxRange], offset: uint, buffer: &mut[u8]) -> u8 {
+    if n < range.len() as uint{
         // FUTURE throw exception if index is out of range?
         buffer[offset] = 0;
     } else {
@@ -148,7 +148,7 @@ pub fn renderDMXIntIndexedWithRange(n: u16, range: &[DmxRange], offset: u16, buf
 }
 
 // Interpret a boolean value n as a DMX channel value.
-pub fn renderDMXBooleanWithRange(n: bool, range: &BooleanDmxRangeMatrix, offset: u16, buffer: &mut[u8]) -> u8 {
+pub fn renderDMXBooleanWithRange(n: bool, range: &BooleanDmxRangeMatrix, offset: uint, buffer: &mut[u8]) -> u8 {
     buffer[offset] =
         if n {
             range.t.min
@@ -166,7 +166,7 @@ pub fn renderDMXBooleanWithRange(n: bool, range: &BooleanDmxRangeMatrix, offset:
 // The incoming spin value n is a single float in the range [-1.0,1.0].
 //
 // Renders two channels. The first channel is mode, the next speed.
-pub fn renderDMXSpinBipolar2ChWithRange(n: f64, range: &SpinDmxRangeMatrix, offset: u16, buffer: &mut[u8]) -> (u8, u8) {
+pub fn renderDMXSpinBipolar2ChWithRange(n: f64, range: &SpinDmxRangeMatrix, offset: uint, buffer: &mut[u8]) -> (u8, u8) {
     let nn = limit_bipolar_unit_f64(n);
     let (mode, speed) =
         if nn == 0.0 { // motionless

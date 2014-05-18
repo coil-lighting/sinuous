@@ -1,6 +1,6 @@
 #![crate_id = "sinuous#0.01"]
-#[allow(dead_code)];
-#[allow(non_camel_case_types)];
+#![allow(dead_code)]
+#![allow(non_camel_case_types)]
 
 //! Nude pencil drawings of basic libsinuous constructs.
 //
@@ -25,6 +25,34 @@ extern crate collections;
 //use std::u64;
 use collections::HashMap;
 use range::DmxRange;
+use blend::fblendClobber;
+use blend::fblendVecEuclidMax;
+use blend::fblendVecEuclidMin;
+use blend::fblendVecEuclidMedian;
+use blend::fblendVecRingUniMedian;
+use blend::fblendVecRingBiMedian;
+use blend::fblendVecEuclidMultiply;
+use blend::fblendVecEuclidUniAdd;
+use blend::fblendVecRingUniAdd;
+use blend::fblendVecEuclidBiAdd;
+use blend::fblendVecRingBiAdd;
+use blend::fblendVecEuclidUniSubtract;
+use blend::fblendVecRingUniSubtract;
+use blend::fblendVecEuclidBiSubtract;
+use blend::fblendVecRingBiSubtract;
+
+use blend::iblendClobber;
+use blend::iblendVecEuclidMax;
+use blend::iblendVecEuclidMin;
+use blend::iblendVecEuclidMedian;
+use blend::iblendVecRingMedian;
+use blend::iblendVecRingAdd;
+use blend::iblendVecEuclidAdd;
+use blend::iblendVecRingSubtract;
+use blend::iblendVecEuclidSubtract;
+
+// Doesn't work due to compiler bug fictitious type ty_param ... in sizing_type_of() ... task 'rustc' failed at 'Box<Any>', /Users/m/src/rust/src/libsyntax/diagnostic.rs:162
+// use blend::blendClobber;
 
 mod numeric;
 mod range;
@@ -86,6 +114,217 @@ enum Topo {
     // Example: TODO
     UndefinedTopo,
 }
+
+type Blendf = fn(a:f64, b:f64) -> f64;
+
+struct ContinuousBlenderTable {
+    clobber: Blendf,
+    max: Blendf,
+    min: Blendf,
+    median: Blendf,
+    add: Blendf,
+    subtract: Blendf,
+    add_modulus: Blendf,
+    subtract_modulus: Blendf,
+    multiply: Blendf,
+    abs_max: Blendf,
+    abs_min: Blendf,
+}
+
+// TODO remember why I decided that range was essential with these, or simplify
+// TODO wrap Blendi items to take (and discard) a range, for uniformity
+type Blendi = fn(a:i64, b:i64) -> i64;
+type BlendRangedi = fn(a:i64, b:i64, minimum: i64, maximum: i64) -> i64;
+
+struct DiscreteBlenderTable {
+    clobber: Blendi,
+    max: Blendi,
+    min: Blendi,
+    median: BlendRangedi,
+    add: BlendRangedi,
+    subtract: BlendRangedi,
+    add_modulus: BlendRangedi,
+    subtract_modulus: BlendRangedi,
+    multiply: Blendi,
+    abs_max: Blendi,
+    abs_min: Blendi,
+}
+
+enum BlenderTable {
+    // there must be a less awkward way to do this...
+    ContinuousBlenders(ContinuousBlenderTable),
+    DiscreteBlenders(DiscreteBlenderTable),
+}
+
+struct Topo_ {
+    blend_encouraged: bool,
+    blend_meaningful: bool,
+    blenders: BlenderTable,
+}
+
+// Naturally continuous, values bounded, interpolation recommended.
+// Range: [0.0,1.0]
+// Example: dimmer
+static continuousEuclidianUnipolar_: Topo_ = Topo_ {
+    blend_encouraged: true,
+    blend_meaningful: true,
+    blenders: ContinuousBlenders(ContinuousBlenderTable {
+        clobber: fblendClobber,
+        max: fblendVecEuclidMax,
+        min: fblendVecEuclidMin,
+        median: fblendVecEuclidMedian,
+        add: fblendVecEuclidUniAdd,
+        subtract: fblendVecEuclidUniSubtract,
+        add_modulus: fblendVecRingUniAdd,
+        subtract_modulus: fblendVecRingUniSubtract,
+        multiply: fblendVecEuclidMultiply,
+        abs_max: fblendVecEuclidMax,
+        abs_min: fblendVecEuclidMin,
+    })
+};
+
+// // Naturally continuous, values bounded, interpolation recommended.
+// // Range: [-1.0,1.0]
+// // Example: X- or Y-position on a bounded pivot or linear track
+static continuousEuclidianBipolar_: Topo_ = Topo_ {
+    blend_encouraged: true,
+    blend_meaningful: true,
+    blenders: ContinuousBlenders(ContinuousBlenderTable {
+        clobber: fblendClobber,
+        max: fblendVecEuclidMax,
+        min: fblendVecEuclidMin,
+        median: fblendVecEuclidMedian,
+        add: fblendVecEuclidBiAdd,
+        subtract: fblendVecEuclidBiSubtract,
+        add_modulus: fblendVecRingBiAdd,
+        subtract_modulus: fblendVecRingBiSubtract,
+        multiply: fblendVecEuclidMultiply,
+        abs_max: fblendVecEuclidMax,
+        abs_min: fblendVecEuclidMin,
+    })
+};
+
+// // Naturally continuous, values wrap, interpolation recommended.
+// // Range: [0.0,1.0]
+// // Example: angle of rotation
+static continuousRingUnipolar_: Topo_ = Topo_ {
+    blend_encouraged: true,
+    blend_meaningful: true,
+    blenders: ContinuousBlenders(ContinuousBlenderTable {
+        clobber: fblendClobber,
+        max: fblendVecEuclidMax,
+        min: fblendVecEuclidMin,
+        median: fblendVecRingUniMedian,
+        add: fblendVecRingUniAdd,
+        subtract: fblendVecRingUniSubtract,
+        add_modulus: fblendVecRingUniAdd,
+        subtract_modulus: fblendVecRingUniSubtract,
+        multiply: fblendVecEuclidMultiply,
+        abs_max: fblendVecEuclidMax,
+        abs_min: fblendVecEuclidMin,
+    })
+};
+
+// // Naturally continuous, values wrap, interpolation recommended, with a
+// // natural center point at 0.
+// // Range: [-1.0,1.0]
+// // Example: fully commutated pan or tilt
+static continuousRingBipolar_: Topo_ = Topo_ {
+    blend_encouraged: true,
+    blend_meaningful: true,
+    blenders: ContinuousBlenders(ContinuousBlenderTable {
+        clobber: fblendClobber,
+        max: fblendVecEuclidMax,
+        min: fblendVecEuclidMin,
+        median: fblendVecRingBiMedian,
+        add: fblendVecRingBiAdd,
+        subtract: fblendVecRingBiSubtract,
+        add_modulus: fblendVecRingBiAdd,
+        subtract_modulus: fblendVecRingBiSubtract,
+        multiply: fblendVecEuclidMultiply,
+        abs_max: fblendVecEuclidMax,
+        abs_min: fblendVecEuclidMin,
+    })
+};
+
+fn iblend_TODO(a: i64, _b: i64) -> i64 {
+    // Not sure how to define multiply mode for discrete values. Clobber for now.
+    a
+}
+
+// Naturally discontinuous, values wrap, interpolation conceivably
+// mechanically/logically meaningful, but aesthetically discouraged.
+// Range: Int indexed from 0
+// Example: litho index
+static discreteRing_: Topo_ = Topo_ {
+    blend_encouraged: false,
+    blend_meaningful: true,
+    blenders: DiscreteBlenders(DiscreteBlenderTable {
+        clobber: iblendClobber,
+        max: iblendVecEuclidMax,
+        min: iblendVecEuclidMin,
+        median: iblendVecRingMedian,
+        add: iblendVecRingAdd,
+        subtract: iblendVecRingSubtract,
+        add_modulus: iblendVecRingAdd,
+        subtract_modulus: iblendVecRingSubtract,
+        multiply: iblend_TODO,
+        abs_max: iblendVecEuclidMax,
+        abs_min: iblendVecEuclidMin,
+    })
+};
+
+// Naturally discontinuous, values bounded, interpolation conceivably
+// mechanically/logically meaningful, but aesthetically discouraged.
+// Range: Int indexed from 0
+// Example: linear 35mm slide tray index
+static discreteArray_: Topo_ = Topo_ {
+    blend_encouraged: false,
+    blend_meaningful: true,
+    blenders: DiscreteBlenders(DiscreteBlenderTable {
+        clobber: iblendClobber,
+        max: iblendVecEuclidMax,
+        min: iblendVecEuclidMin,
+        median: iblendVecEuclidMedian,
+        add: iblendVecEuclidAdd,
+        subtract: iblendVecEuclidSubtract,
+        add_modulus: iblendVecEuclidAdd,
+        subtract_modulus: iblendVecEuclidSubtract,
+        multiply: iblend_TODO,
+        abs_max: iblendVecEuclidMax,
+        abs_min: iblendVecEuclidMin,
+    })
+};
+
+// Naturally discontinuous, values bounded, interpolation
+// mechanically/logically inconceivable and therefore forbidden.
+// Range: Int indexed from 0
+// Example: color wheel mode
+static discreteSet_: Topo_ = Topo_ {
+    blend_encouraged: false,
+    blend_meaningful: false,
+    blenders: DiscreteBlenders(DiscreteBlenderTable {
+        // Same as discreteArray, e.g. for glitching between modes
+        clobber: iblendClobber,
+        max: iblendVecEuclidMax,
+        min: iblendVecEuclidMin,
+        median: iblendVecEuclidMedian,
+        add: iblendVecEuclidAdd,
+        subtract: iblendVecEuclidSubtract,
+        add_modulus: iblendVecEuclidAdd,
+        subtract_modulus: iblendVecEuclidSubtract,
+        multiply: iblend_TODO,
+        abs_max: iblendVecEuclidMax,
+        abs_min: iblendVecEuclidMin,
+    })
+};
+
+// Topology is undefined, probably because this is a (virtual?) "cluster"
+// parent node. TODO: expand on this, accounting for the new device model
+// Range: null
+// Example: TODO
+// UndefinedTopo,
+
 
 // Named subtypes for the primitive storage representing the numeric value for
 // a Device Attribute's instance.
@@ -249,7 +488,7 @@ struct DmxMap {
 struct Attribute {
     name: ~str, // e.g. "iris"
 
-    topology: ~Topo,
+    topology: Box<Topo>,
 
     /// Experimentally eliminating dimensionality in order to simplify device
     /// modeling. A (sub)Profile/sub(Device)'s dimensionality is just the
@@ -285,7 +524,7 @@ struct Profile {
     manufacturer: ~str, // "HES"
     author: ~str,       // "e.g. Steve Jobs"
     version: int,       // 1, 2, 3...
-    root: ~ProfileNode,
+    root: Box<ProfileNode>,
 }
 
 enum ProfileNode {
@@ -371,17 +610,17 @@ struct Device {
     // one distinct device address. (See DevicePatch.locs for the case where
     // multiple physical devices all share the same address.)
     patches: ~[DevicePatch],
-    root: ~DeviceNode,
+    root: Box<DeviceNode>,
 }
 
 // TODO - optional custom labels for each node? currently just default to profile node labels
 struct DeviceBranch {
-    profile_branch: ~ProfileBranch,
+    profile_branch: Box<ProfileBranch>,
     children: ~[Device]
 }
 
 struct DeviceEndpoint {
-    attribute: ~Attribute,
+    attribute: Box<Attribute>,
     value: AttributeValue,
 }
 

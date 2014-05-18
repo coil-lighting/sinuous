@@ -11,6 +11,11 @@ use numeric::wrap_ring_i64;
 use numeric::wrap_ring_bipolar_f64;
 use numeric::wrap_ring_unipolar_f64;
 
+// Given two attribute values a and b, just return a copy of a, "clobbering" b.
+pub fn iblendClobber(a:i64, _b:i64) -> i64 {
+    a
+}
+
 pub fn iblendVecEuclidAdd(a: i64, b: i64, minimum: i64, maximum: i64) -> i64 {
     limit_euclid_i64(a + b, minimum, maximum)
 }
@@ -84,17 +89,6 @@ pub fn iblendVecEuclidAbsMin(a: i64, b: i64) -> i64 {
     }
 }
 
-// -----------------------------------------------------------------------------
-// Generic blenders
-
-// Given two attribute values a and b, just return a copy of a, "clobbering" b.
-pub fn blendClobber<T>(a: T, _b: T) -> T {
-    // XXX test that return value for >1D inputs are *copies*
-    // this used to take dims because the ruby impl switched on dims; might not
-    // be needed in rust
-    a
-}
-
 // IDEA: do away with dimensionality. make compound attributes just subtrees
 // of device space. then we can always unbundle, say, an xy effect into an x
 // and a y without having to write a separate model branch in the profile.
@@ -114,6 +108,12 @@ pub fn blendClobber<T>(a: T, _b: T) -> T {
 // TODO: some of these might be made generic on primitives like this:
 // pub fn abs<T: Signed>(value: T) -> T
 // If we can do this without pointers, do so in a separate clean-up step.
+// Work around a 0.11-pre compiler bug by not using generics.
+
+// Given two attribute values a and b, just return a copy of a, "clobbering" b.
+pub fn fblendClobber(a:f64, _b:f64) -> f64 {
+    a
+}
 
 // Given a Euclidian value a and b, return a new value which is the maximum of
 // the two.

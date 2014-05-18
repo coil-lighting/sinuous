@@ -2,8 +2,8 @@
 //! valid numeric ranges for DMX channel values.
 
 pub struct Range <T> {
-    min: T,
-    max: T,
+    pub min: T,
+    pub max: T,
 }
 
 pub type DmxRange = Range<u8>;
@@ -59,11 +59,11 @@ pub struct BipolarChannelValueRangeMatrix<T> {
     // N.B. neg.min may be greater than neg.max, or pos.min may be greater than
     // pos.max, inverting the interpolation for the respective subrange.
     // See renderDMXFloatBipolarWithRange for details.
-    min: Range<T>, // Values equivalent to -1.0
-    neg: Range<T>, // Values in the range (-1.0..0.0), exclusive
-    mid: Range<T>, // Values equivalent to 0.0
-    pos: Range<T>, // Values in the range (0.0..1.0), exclusive
-    max: Range<T>, // Values equivalent to 1.0
+    pub min: Range<T>, // Values equivalent to -1.0
+    pub neg: Range<T>, // Values in the range (-1.0..0.0), exclusive
+    pub mid: Range<T>, // Values equivalent to 0.0
+    pub pos: Range<T>, // Values in the range (0.0..1.0), exclusive
+    pub max: Range<T>, // Values equivalent to 1.0
 }
 
 pub type BipolarDmxRangeMatrix = BipolarChannelValueRangeMatrix<u8>;
@@ -89,9 +89,9 @@ pub type BipolarDmxRangeMatrix = BipolarChannelValueRangeMatrix<u8>;
 pub struct UnipolarRangeMatrix<T> {
     // N.B. mid.min may be greater than mid.max, inverting the interpolation.
     // See renderDMXFloatWithRange for details.
-    min: Range<T>, // Values equivalent to 0.0
-    mid: Range<T>, // Values in the range (0.0.. 1.0), exclusive
-    max: Range<T>, // Values equivalent to 1.0
+    pub min: Range<T>, // Values equivalent to 0.0
+    pub mid: Range<T>, // Values in the range (0.0.. 1.0), exclusive
+    pub max: Range<T>, // Values equivalent to 1.0
 }
 
 pub type UnipolarDmxRangeMatrix = UnipolarRangeMatrix<u8>;
@@ -113,16 +113,16 @@ pub type UnipolarDmxRangeMatrix = UnipolarRangeMatrix<u8>;
 // The magnitude of value is interpreted as speed. Currently speed renders
 // linearly from 0 (still) to 255 (fastest). See below.
 pub struct SpinRangeMatrix<T> {
-    rev:  Range<T>, // Reverse values, slow through fast
-    stop: Range<T>, // Values equivalent to stationary
-    fwd:  Range<T>, // Forward values, slow through fast
+    pub rev:  Range<T>, // Reverse values, slow through fast
+    pub stop: Range<T>, // Values equivalent to stationary
+    pub fwd:  Range<T>, // Forward values, slow through fast
 }
 
 pub type SpinDmxRangeMatrix = SpinRangeMatrix<u8>;
 
 pub struct BooleanRangeMatrix<T> {
-    f: Range<T>, // Values equivalent to false
-    t: Range<T>, // Values equivalent to true
+    pub f: Range<T>, // Values equivalent to false
+    pub t: Range<T>, // Values equivalent to true
 }
 
 pub type BooleanDmxRangeMatrix = BooleanRangeMatrix<u8>;
