@@ -26,30 +26,30 @@ extern crate collections;
 use collections::HashMap;
 use range::DmxRange;
 use blend::fblendClobber;
-use blend::fblendVecEuclidMax;
-use blend::fblendVecEuclidMin;
-use blend::fblendVecEuclidMedian;
-use blend::fblendVecRingUniMedian;
-use blend::fblendVecRingBiMedian;
-use blend::fblendVecEuclidMultiply;
-use blend::fblendVecEuclidUniAdd;
-use blend::fblendVecRingUniAdd;
-use blend::fblendVecEuclidBiAdd;
-use blend::fblendVecRingBiAdd;
-use blend::fblendVecEuclidUniSubtract;
-use blend::fblendVecRingUniSubtract;
-use blend::fblendVecEuclidBiSubtract;
-use blend::fblendVecRingBiSubtract;
+use blend::fblendEuclidMax;
+use blend::fblendEuclidMin;
+use blend::fblendEuclidMedian;
+use blend::fblendRingUniMedian;
+use blend::fblendRingBiMedian;
+use blend::fblendEuclidMultiply;
+use blend::fblendEuclidUniAdd;
+use blend::fblendRingUniAdd;
+use blend::fblendEuclidBiAdd;
+use blend::fblendRingBiAdd;
+use blend::fblendEuclidUniSubtract;
+use blend::fblendRingUniSubtract;
+use blend::fblendEuclidBiSubtract;
+use blend::fblendRingBiSubtract;
 
 use blend::iblendClobber;
-use blend::iblendVecEuclidMax;
-use blend::iblendVecEuclidMin;
-use blend::iblendVecEuclidMedian;
-use blend::iblendVecRingMedian;
-use blend::iblendVecRingAdd;
-use blend::iblendVecEuclidAdd;
-use blend::iblendVecRingSubtract;
-use blend::iblendVecEuclidSubtract;
+use blend::iblendEuclidMax;
+use blend::iblendEuclidMin;
+use blend::iblendEuclidMedian;
+use blend::iblendRingMedian;
+use blend::iblendRingAdd;
+use blend::iblendEuclidAdd;
+use blend::iblendRingSubtract;
+use blend::iblendEuclidSubtract;
 
 // Doesn't work due to compiler bug fictitious type ty_param ... in sizing_type_of() ... task 'rustc' failed at 'Box<Any>', /Users/m/src/rust/src/libsyntax/diagnostic.rs:162
 // use blend::blendClobber;
@@ -170,16 +170,16 @@ static continuousEuclidianUnipolar_: Topo_ = Topo_ {
     blend_meaningful: true,
     blenders: ContinuousBlenders(ContinuousBlenderTable {
         clobber: fblendClobber,
-        max: fblendVecEuclidMax,
-        min: fblendVecEuclidMin,
-        median: fblendVecEuclidMedian,
-        add: fblendVecEuclidUniAdd,
-        subtract: fblendVecEuclidUniSubtract,
-        add_modulus: fblendVecRingUniAdd,
-        subtract_modulus: fblendVecRingUniSubtract,
-        multiply: fblendVecEuclidMultiply,
-        abs_max: fblendVecEuclidMax,
-        abs_min: fblendVecEuclidMin,
+        max: fblendEuclidMax,
+        min: fblendEuclidMin,
+        median: fblendEuclidMedian,
+        add: fblendEuclidUniAdd,
+        subtract: fblendEuclidUniSubtract,
+        add_modulus: fblendRingUniAdd,
+        subtract_modulus: fblendRingUniSubtract,
+        multiply: fblendEuclidMultiply,
+        abs_max: fblendEuclidMax,
+        abs_min: fblendEuclidMin,
     })
 };
 
@@ -191,16 +191,16 @@ static continuousEuclidianBipolar_: Topo_ = Topo_ {
     blend_meaningful: true,
     blenders: ContinuousBlenders(ContinuousBlenderTable {
         clobber: fblendClobber,
-        max: fblendVecEuclidMax,
-        min: fblendVecEuclidMin,
-        median: fblendVecEuclidMedian,
-        add: fblendVecEuclidBiAdd,
-        subtract: fblendVecEuclidBiSubtract,
-        add_modulus: fblendVecRingBiAdd,
-        subtract_modulus: fblendVecRingBiSubtract,
-        multiply: fblendVecEuclidMultiply,
-        abs_max: fblendVecEuclidMax,
-        abs_min: fblendVecEuclidMin,
+        max: fblendEuclidMax,
+        min: fblendEuclidMin,
+        median: fblendEuclidMedian,
+        add: fblendEuclidBiAdd,
+        subtract: fblendEuclidBiSubtract,
+        add_modulus: fblendRingBiAdd,
+        subtract_modulus: fblendRingBiSubtract,
+        multiply: fblendEuclidMultiply,
+        abs_max: fblendEuclidMax,
+        abs_min: fblendEuclidMin,
     })
 };
 
@@ -212,16 +212,16 @@ static continuousRingUnipolar_: Topo_ = Topo_ {
     blend_meaningful: true,
     blenders: ContinuousBlenders(ContinuousBlenderTable {
         clobber: fblendClobber,
-        max: fblendVecEuclidMax,
-        min: fblendVecEuclidMin,
-        median: fblendVecRingUniMedian,
-        add: fblendVecRingUniAdd,
-        subtract: fblendVecRingUniSubtract,
-        add_modulus: fblendVecRingUniAdd,
-        subtract_modulus: fblendVecRingUniSubtract,
-        multiply: fblendVecEuclidMultiply,
-        abs_max: fblendVecEuclidMax,
-        abs_min: fblendVecEuclidMin,
+        max: fblendEuclidMax,
+        min: fblendEuclidMin,
+        median: fblendRingUniMedian,
+        add: fblendRingUniAdd,
+        subtract: fblendRingUniSubtract,
+        add_modulus: fblendRingUniAdd,
+        subtract_modulus: fblendRingUniSubtract,
+        multiply: fblendEuclidMultiply,
+        abs_max: fblendEuclidMax,
+        abs_min: fblendEuclidMin,
     })
 };
 
@@ -234,16 +234,16 @@ static continuousRingBipolar_: Topo_ = Topo_ {
     blend_meaningful: true,
     blenders: ContinuousBlenders(ContinuousBlenderTable {
         clobber: fblendClobber,
-        max: fblendVecEuclidMax,
-        min: fblendVecEuclidMin,
-        median: fblendVecRingBiMedian,
-        add: fblendVecRingBiAdd,
-        subtract: fblendVecRingBiSubtract,
-        add_modulus: fblendVecRingBiAdd,
-        subtract_modulus: fblendVecRingBiSubtract,
-        multiply: fblendVecEuclidMultiply,
-        abs_max: fblendVecEuclidMax,
-        abs_min: fblendVecEuclidMin,
+        max: fblendEuclidMax,
+        min: fblendEuclidMin,
+        median: fblendRingBiMedian,
+        add: fblendRingBiAdd,
+        subtract: fblendRingBiSubtract,
+        add_modulus: fblendRingBiAdd,
+        subtract_modulus: fblendRingBiSubtract,
+        multiply: fblendEuclidMultiply,
+        abs_max: fblendEuclidMax,
+        abs_min: fblendEuclidMin,
     })
 };
 
@@ -261,16 +261,16 @@ static discreteRing_: Topo_ = Topo_ {
     blend_meaningful: true,
     blenders: DiscreteBlenders(DiscreteBlenderTable {
         clobber: iblendClobber,
-        max: iblendVecEuclidMax,
-        min: iblendVecEuclidMin,
-        median: iblendVecRingMedian,
-        add: iblendVecRingAdd,
-        subtract: iblendVecRingSubtract,
-        add_modulus: iblendVecRingAdd,
-        subtract_modulus: iblendVecRingSubtract,
+        max: iblendEuclidMax,
+        min: iblendEuclidMin,
+        median: iblendRingMedian,
+        add: iblendRingAdd,
+        subtract: iblendRingSubtract,
+        add_modulus: iblendRingAdd,
+        subtract_modulus: iblendRingSubtract,
         multiply: iblend_TODO,
-        abs_max: iblendVecEuclidMax,
-        abs_min: iblendVecEuclidMin,
+        abs_max: iblendEuclidMax,
+        abs_min: iblendEuclidMin,
     })
 };
 
@@ -283,16 +283,16 @@ static discreteArray_: Topo_ = Topo_ {
     blend_meaningful: true,
     blenders: DiscreteBlenders(DiscreteBlenderTable {
         clobber: iblendClobber,
-        max: iblendVecEuclidMax,
-        min: iblendVecEuclidMin,
-        median: iblendVecEuclidMedian,
-        add: iblendVecEuclidAdd,
-        subtract: iblendVecEuclidSubtract,
-        add_modulus: iblendVecEuclidAdd,
-        subtract_modulus: iblendVecEuclidSubtract,
+        max: iblendEuclidMax,
+        min: iblendEuclidMin,
+        median: iblendEuclidMedian,
+        add: iblendEuclidAdd,
+        subtract: iblendEuclidSubtract,
+        add_modulus: iblendEuclidAdd,
+        subtract_modulus: iblendEuclidSubtract,
         multiply: iblend_TODO,
-        abs_max: iblendVecEuclidMax,
-        abs_min: iblendVecEuclidMin,
+        abs_max: iblendEuclidMax,
+        abs_min: iblendEuclidMin,
     })
 };
 
@@ -306,16 +306,16 @@ static discreteSet_: Topo_ = Topo_ {
     blenders: DiscreteBlenders(DiscreteBlenderTable {
         // Same as discreteArray, e.g. for glitching between modes
         clobber: iblendClobber,
-        max: iblendVecEuclidMax,
-        min: iblendVecEuclidMin,
-        median: iblendVecEuclidMedian,
-        add: iblendVecEuclidAdd,
-        subtract: iblendVecEuclidSubtract,
-        add_modulus: iblendVecEuclidAdd,
-        subtract_modulus: iblendVecEuclidSubtract,
+        max: iblendEuclidMax,
+        min: iblendEuclidMin,
+        median: iblendEuclidMedian,
+        add: iblendEuclidAdd,
+        subtract: iblendEuclidSubtract,
+        add_modulus: iblendEuclidAdd,
+        subtract_modulus: iblendEuclidSubtract,
         multiply: iblend_TODO,
-        abs_max: iblendVecEuclidMax,
-        abs_min: iblendVecEuclidMin,
+        abs_max: iblendEuclidMax,
+        abs_min: iblendEuclidMin,
     })
 };
 
