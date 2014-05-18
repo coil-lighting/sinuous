@@ -18,9 +18,8 @@
 // # They do not necessarily pertain to this Rust version. Just for reference
 // # while I try to port this puppy.
 
-extern crate collections;
-
 mod blend;
+mod device;
 mod dmx;
 mod effect;
 mod numeric;

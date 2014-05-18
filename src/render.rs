@@ -154,12 +154,13 @@ pub fn renderDmxDouble(n: f64, offset: uint, buffer: &mut[u8]) -> (u8, u8) {
 // The parameter index must be a valid integer index into attribute.range.
 // (For now, out of range indices revert to 0.)
 // TODO enum for this kind of IndexedRangeMatrix? and move relevant docs into it.
-pub fn renderDmxIntIndexedWithRange(n: uint, range: &[DmxRange], offset: uint, buffer: &mut[u8]) -> u8 {
-    if n < range.len() as uint{
+pub fn renderDmxIntIndexedWithRange(n: i64, range: &~[DmxRange], offset: uint, buffer: &mut[u8]) -> u8 {
+    // TODO: deal with possibility of out-of-range n, for 32 bit systems
+    if n < range.len() as i64 {
         // FUTURE throw exception if index is out of range?
         buffer[offset] = 0;
     } else {
-        buffer[offset] = range[n].min;
+        buffer[offset] = range[n as uint].min;
     }
     buffer[offset]
 }
@@ -215,11 +216,13 @@ pub enum DmxAttributeRenderer {
         UnipolarDmxRangeMatrix
     ),
 
+    // TODO: render into two nonadjacent indices in the buffer... see ideas in
+    // DmxAddressOffset
     DmxDoubleRenderer(fn(n: f64, offset: uint, buffer: &mut[u8]) -> (u8, u8)),
 
     DmxIntIndexedWithRangeRenderer(
-        fn(n: uint, range: &[DmxRange], offset: uint, buffer: &mut[u8]) -> u8,
-        DmxRange
+        fn(n: i64, range: &~[DmxRange], offset: uint, buffer: &mut[u8]) -> u8,
+        ~[DmxRange]
     ),
 
     DmxBooleanWithRangeRenderer(

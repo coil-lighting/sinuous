@@ -1,9 +1,18 @@
 //! Models describing device profiles and concrete devices (as trees).
 use dmx::DmxAddr;
 use dmx::DmxMap;
+use dmx::DmxAddressOffsetSingle;
 use effect::EffectType;
 use effect::EffectSubtype;
 use effect::EffectSubsubtype;
+use render::DmxFloatRenderer;
+use render::DmxFloatBipolarWithRangeRenderer;
+use render::DmxFloatUnipolarWithRangeRenderer;
+use render::DmxDoubleRenderer;
+use render::DmxIntIndexedWithRangeRenderer;
+use render::DmxBooleanWithRangeRenderer;
+use render::DmxSpinBipolar2ChWithRangeRenderer;
+
 use topo::Topo;
 use world::Loc;
 
@@ -115,9 +124,97 @@ struct DeviceBranch {
     children: ~[DeviceNode]
 }
 
+impl DeviceBranch {
+    fn render(&self, buffer: &mut[u8]) {
+        // TODO verify that this operates by reference, not by copy!
+        for child in self.children.iter() {
+            match child {
+                // Rust manual: "Patterns that bind variables default to binding
+                // to a copy or move of the matched value (depending on the
+                // matched value's type). This can be changed to bind to a
+                // reference by using the 'ref' keyword, or to a mutable
+                // reference using 'ref mut'."
+                &DeviceNodeBranch(ref d) => d.render(buffer),
+                &DeviceNodeEndpoint(ref d) => d.render(buffer)
+            };
+        }
+    }
+}
+
 struct DeviceEndpoint {
     attribute: Box<Attribute>,
     value: Option<AttributeValue>, // required if rendering is implemented for this attribute
+}
+
+// struct Attribute {
+//     name: ~str, // e.g. "iris"
+//     effect: (EffectType, EffectSubtype, EffectSubsubtype),
+//     topo: Box<Topo>,
+//     default: Option<AttributeValue>, // required if rendering is implemented
+//     dmx: Option<DmxMap>, // required if DMX rendering is implemented
+// }
+
+impl DeviceEndpoint {
+    fn render(&self, buffer: &mut[u8]) {
+        let n: AttributeValue = match self.value {
+            Some(v) => v,
+            None => match self.attribute.default {
+                Some(d) => d,
+                None => fail!("Every attribute which supports rendering must supply a default value.")
+            }
+        };
+
+        // TODO: also make sure this doesn't copy anything by value
+        let dmx: &DmxMap = match self.attribute.dmx {
+            Some(ref x) => x,
+            None => fail!("Every attribute which supports rendering must supply a DmxMap (for now).")
+        };
+
+        let offset: uint = match dmx.offset {
+            // TODO Might just collapse this field into DmxAttributeRenderers.
+            DmxAddressOffsetSingle(i) => i
+        };
+
+        // TODO support for renderers requiring multiple offsets, such as
+        // a double renderer that does not write to adjacent indices in the
+        // framebuffer.
+
+        let (nf, ni) = match n {
+            Continuous(c) => (c, 0),
+            Discrete(d) => (0.0, d)
+        };
+
+        match &dmx.renderer {
+            // had to use {curlies} + semicolon to make the match arms return
+            // homogeneous types... is there an easier way?
+            &DmxFloatRenderer(r) => {
+                r(nf, offset, buffer);
+            },
+            &DmxFloatBipolarWithRangeRenderer(r, ref range) => {
+                r(nf, range, offset, buffer);
+            },
+            &DmxFloatUnipolarWithRangeRenderer(r, ref range) => {
+                r(nf, range, offset, buffer);
+            },
+            &DmxDoubleRenderer(r) => {
+                r(nf, offset, buffer);
+            },
+            &DmxIntIndexedWithRangeRenderer(r, ref range) => {
+                r(ni, range, offset, buffer);
+            },
+            &DmxBooleanWithRangeRenderer(r, ref range) => {
+                // Maybe do away with booleans and use ints?
+                let bi: bool = match ni {
+                    0 => false,
+                    _ => true
+                };
+                r(bi, range, offset, buffer);
+            },
+            &DmxSpinBipolar2ChWithRangeRenderer(r, ref range) => {
+                r(nf, range, offset, buffer);
+            },
+        };
+    }
 }
 
 // A device is an actual instance of a device. A device is described by its
@@ -137,4 +234,14 @@ struct Device {
     // multiple physical devices all share the same address.)
     patches: ~[DevicePatch],
     root: Box<DeviceNode>,
+}
+
+impl Device {
+    fn render(&self, buffer: &mut[u8]) {
+        // TODO get buffers from patches, render to multiple patches if needed
+        match *self.root {
+            DeviceNodeBranch(ref d) => d.render(buffer),
+            DeviceNodeEndpoint(ref d) => d.render(buffer)
+        };
+    }
 }

@@ -1,6 +1,4 @@
 //! For modeling DMX attributes in DMX device profiles.
-use collections::HashMap;
-use range::DmxRange;
 use render::DmxAttributeRenderer;
 
 // # dmx_offset - Specifies insertion order within the serialized output.
@@ -15,25 +13,28 @@ use render::DmxAttributeRenderer;
 // # adjacent to C+M+Y. Only certain attribute types require mapped-
 // # multichannel (sequential) dmx_offsets; see also
 // # DMXAttributeRenderers.attributeTypes.
-// #
-// # It is the responsibility of <TODO: RENDERING FUNCTION> to interpret dmx_offset.
+
+// It is the responsibility of DeviceEndpoint.render() to interpret dmx_offset.
+// We might need to collapse this into the DmxAttributeRenderers.
 pub enum DmxAddressOffset {
-    //  a map or an array or an int... anything else?
     DmxAddressOffsetSingle(uint),
-    DmxAddressOffsetMultiple(~[uint]),
-    DmxAddressOffsetMap(HashMap<~str, uint>), // TODO Is it really necessary to use a hashmap here? I sure hope not.
+
+    // DmxAddressOffsetMultiple(~[uint]), // Not yet implemented
+
+    // TODO Is it really necessary to use a hashmap here? I sure as hell hope not.
+    // DmxAddressOffsetMap(HashMap<~str, uint>), // Not yet implemented
 }
 
 pub struct DmxMap {
-    offset: DmxAddressOffset, // channel offset with the profile, e.g. pan @ ch3
-    range: DmxRange, // e.g. pack pan into value 127...256
-    renderer: DmxAttributeRenderer,
+    pub offset: DmxAddressOffset, // channel offset with the profile, e.g. pan @ ch3
+    pub renderer: DmxAttributeRenderer,
 }
 
 pub struct DmxUniverse {
     // Just a sketch...
-    id: u32, // TEMP
-    name: ~str
+    pub id: u32, // TEMP
+    pub name: ~str,
+    pub frame: ~[u8], // definitely not its final resting place
 }
 
 pub struct DmxAddr {
