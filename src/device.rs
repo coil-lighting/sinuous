@@ -146,16 +146,9 @@ struct DeviceEndpoint {
     value: Option<AttributeValue>, // required if rendering is implemented for this attribute
 }
 
-// struct Attribute {
-//     name: ~str, // e.g. "iris"
-//     effect: (EffectType, EffectSubtype, EffectSubsubtype),
-//     topo: Box<Topo>,
-//     default: Option<AttributeValue>, // required if rendering is implemented
-//     dmx: Option<DmxMap>, // required if DMX rendering is implemented
-// }
-
 impl DeviceEndpoint {
     fn render(&self, buffer: &mut[u8]) {
+
         let n: AttributeValue = match self.value {
             Some(v) => v,
             None => match self.attribute.default {
@@ -184,9 +177,8 @@ impl DeviceEndpoint {
             Discrete(d) => (0.0, d)
         };
 
+        // Adapt to the interface of the renderer in question.
         match &dmx.renderer {
-            // had to use {curlies} + semicolon to make the match arms return
-            // homogeneous types... is there an easier way?
             &DmxFloatRenderer(r) => {
                 r(nf, offset, buffer);
             },
@@ -237,11 +229,38 @@ struct Device {
 }
 
 impl Device {
-    fn render(&self, buffer: &mut[u8]) {
-        // TODO get buffers from patches, render to multiple patches if needed
-        match *self.root {
-            DeviceNodeBranch(ref d) => d.render(buffer),
-            DeviceNodeEndpoint(ref d) => d.render(buffer)
-        };
+    fn render(&self) {
+        // Proposed: Assemble a list of slices, each a view on a universe's dmx
+        // framebuffer, each slice aligned with the beginning of the device and
+        // only as long as the device, to isolate damage.
+        //
+        // Question: how to aggregate multiple devices, spread out over the
+        // whole universe, into a single quasi-device:
+        //
+        // Answer 1: just use a parent node in the device tree?
+        // Answer 2: Return a buffer that looks like a mut slice, but is
+        // actually mapped via a lookup table?
+        //
+        // Limitation: under this proposal, an individual attribute can't
+        // corrupt other (non-overlapping) devices, but it also can't range
+        // over the whole universe without belonging to a device that claims
+        // the whole universe. Hopefully this is okay.
+        for patch in self.patches.iter() {
+            match &patch.addr {
+                &DmxAddrType(addr) => {
+                    let buffer: &mut [u8] = addr.slice_universe();
+
+                    // TODO do not render redundantly if patched more than once (with the same protocol)?
+                    // TODO? track most recent profile slice as we descend the tree
+                    // FUTURE think about how subprofiles might come in handy (where a
+                    // profile gives its attributes relative addresses to relative
+                    // addresses, writing slices on slices)
+                    match *self.root {
+                        DeviceNodeBranch(ref d) => d.render(buffer),
+                        DeviceNodeEndpoint(ref d) => d.render(buffer)
+                    };
+                }
+            }
+        }
     }
 }

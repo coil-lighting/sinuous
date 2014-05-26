@@ -30,15 +30,40 @@ pub struct DmxMap {
     pub renderer: DmxAttributeRenderer,
 }
 
-pub struct DmxUniverse {
+pub struct DmxUniverse<'a> {
     // Just a sketch...
     pub id: u32, // TEMP
     pub name: ~str,
-    pub frame: ~[u8], // definitely not its final resting place
+    pub frame: &'a mut [u8], // definitely not its final resting place... and should it be &[u8]?
 }
 
 pub struct DmxAddr {
     // FUTURE: consider what it would take to render safely in parallel
     universe: Box<DmxUniverse>,
     address: uint, // TODO: statically constrain to 0..511 if possible
+    length: uint, // the number of byte-sized channels in this universe
 }
+
+impl DmxAddr {
+    pub fn slice_universe<'a>(&'a self) -> &'a mut [u8] {
+        self.universe.frame.mut_slice(self.address, self.address + self.length)
+    }
+}
+/*
+enum Addr {
+    DmxAddrType(DmxAddr), // TODO universe + address
+    // Midi_addrType,
+    // OscAddrType,
+    // OpenPixelControlAddrType,
+    // ...
+}
+
+// TODO better name
+struct DevicePatch {
+    addr: Addr,
+
+    // A DevicePatch has multiple locations in case more than one physical
+    // device with the same address, is managed by one logical DevicePatch.
+    locs: ~[Loc]
+}
+*/
