@@ -335,6 +335,7 @@ fn is_flush(cards: &~[Card]) -> bool {
 	let mut flush = true;
 
 	// iterate over the rest of the hand and check the suit
+	// FIXME reimpl by calling rust's equivalent to first()
 	for card in card_iter {
 		if card.suit != suit {
 			flush = false;
@@ -406,6 +407,7 @@ fn is_straight(cards: &~[Card]) -> (bool, bool) {
 	let mut straight = true;
 
 	// loop over the second card
+	// FIXME reimpl by calling rust's equivalent to first()
 	for card2 in card_iter2 {
 
 		// get the first card
@@ -502,6 +504,8 @@ fn vec_eq<T: Eq>(vector: &[T]) -> bool {
 	let mut iter = vector.iter();
 	let first = iter.next().unwrap();
 	let mut iseq = true;
+
+	// FIXME reimpl by calling rust's equivalent to first()
 	for val in iter {
 		if val != first {
 			iseq = false;
@@ -528,6 +532,8 @@ fn fourkind(hand: &Hand) -> (bool, ~[uint]) {
 	let values = hand.get_values();
 	let mut fourkind = false;
 	let mut value = 0;
+
+	// FIXME reimpl by calling rust's equivalent to first()
 	for fours in values.windows(4) {
 		if vec_eq(fours) {
 			fourkind = true;
@@ -595,6 +601,8 @@ fn threekind(hand: &Hand) -> (bool, ~[uint]) {
 	let values = hand.get_values();
 	let mut threekind = false;
 	let mut value = 0;
+
+	// FIXME reimpl by calling rust's equivalent to first()
 	for threes in values.windows(3) {
 		if vec_eq(threes) {
 			threekind = true;
@@ -616,6 +624,7 @@ fn twopair(hand: &Hand) -> (bool, ~[uint]) {
 	let mut lowpair = 0;
 	let mut highpair = 0;
 
+	// FIXME reimpl by calling rust's equivalent to first()
 	let mut pair_iter = values.windows(2);
 	for pairs in pair_iter {
 		if vec_eq(pairs) {
@@ -627,6 +636,7 @@ fn twopair(hand: &Hand) -> (bool, ~[uint]) {
 	if onepair {
 		pair_iter.next();
 		for morepairs in pair_iter {
+			// FIXME reimpl by calling rust's equivalent to first()
 			if vec_eq(morepairs) {
 				twopair = true;
 				highpair = morepairs[0];
@@ -670,6 +680,8 @@ fn pair(hand: &Hand) -> (bool, ~[uint]) {
 	let values = hand.get_values();
 	let mut pair = false;
 	let mut hc: ~[uint] = ~[];
+
+	// FIXME reimpl by calling rust's equivalent to first()
 	for pairs in values.windows(2) {
 		if vec_eq(pairs) {
 			pair = true;
