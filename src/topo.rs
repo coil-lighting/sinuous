@@ -24,26 +24,28 @@ use blend::iblend_euclid_add;
 use blend::iblend_ring_subtract;
 use blend::iblend_euclid_subtract;
 
-
-type Blendfn = fn(a:f64, b:f64) -> f64;
+/// A function that blends two floating-point values and returns the result.
+type Blendf = fn(a:f64, b:f64) -> f64;
 
 /// Map each high-level aesthetic blending intent to a specific implementation.
 struct ContinuousBlenderTable {
-    clobber: Blendfn,
-    max: Blendfn,
-    min: Blendfn,
-    median: Blendfn,
-    add: Blendfn,
-    subtract: Blendfn,
-    add_modulus: Blendfn,
-    subtract_modulus: Blendfn,
-    multiply: Blendfn,
-    abs_max: Blendfn,
-    abs_min: Blendfn,
+    clobber: Blendf,
+    max: Blendf,
+    min: Blendf,
+    median: Blendf,
+    add: Blendf,
+    subtract: Blendf,
+    add_modulus: Blendf,
+    subtract_modulus: Blendf,
+    multiply: Blendf,
+    abs_max: Blendf,
+    abs_min: Blendf,
 }
 
-// TODO remember why I decided that range was essential with these, or simplify
-// TODO wrap Blendi items to take (and discard) a range, for uniformity
+// TODO remember why I decided that range was essential with these, or simplify.
+
+/// A function that blends two integer values and an integer range, returning
+/// the result.
 type Blendi = fn(a:i64, b:i64) -> i64;
 type BlendRangedi = fn(a:i64, b:i64, minimum: i64, maximum: i64) -> i64;
 
