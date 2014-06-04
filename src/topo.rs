@@ -25,20 +25,21 @@ use blend::iblend_ring_subtract;
 use blend::iblend_euclid_subtract;
 
 
-type Blendf = fn(a:f64, b:f64) -> f64;
+type Blendfn = fn(a:f64, b:f64) -> f64;
 
+/// Map each high-level aesthetic blending intent to a specific implementation.
 struct ContinuousBlenderTable {
-    clobber: Blendf,
-    max: Blendf,
-    min: Blendf,
-    median: Blendf,
-    add: Blendf,
-    subtract: Blendf,
-    add_modulus: Blendf,
-    subtract_modulus: Blendf,
-    multiply: Blendf,
-    abs_max: Blendf,
-    abs_min: Blendf,
+    clobber: Blendfn,
+    max: Blendfn,
+    min: Blendfn,
+    median: Blendfn,
+    add: Blendfn,
+    subtract: Blendfn,
+    add_modulus: Blendfn,
+    subtract_modulus: Blendfn,
+    multiply: Blendfn,
+    abs_max: Blendfn,
+    abs_min: Blendfn,
 }
 
 // TODO remember why I decided that range was essential with these, or simplify
