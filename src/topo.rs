@@ -27,6 +27,14 @@ use blend::iblend_euclid_subtract;
 /// A function that blends two floating-point values and returns the result.
 type Blendf = fn(a:f64, b:f64) -> f64;
 
+/// A function that blends two integer values and returns the result.
+type Blendi = fn(a:i64, b:i64) -> i64;
+// TODO remember why I decided that range was essential with these, or simplify.
+// Maybe every int blender should take a range, for uniformity.
+/// A function that blends two integer values and an integer range, returning
+/// the result.
+type BlendRangedi = fn(a:i64, b:i64, minimum: i64, maximum: i64) -> i64;
+
 /// Map each high-level aesthetic blending intent to a specific implementation.
 struct ContinuousBlenderTable {
     clobber: Blendf,
@@ -42,13 +50,6 @@ struct ContinuousBlenderTable {
     abs_min: Blendf,
 }
 
-// TODO remember why I decided that range was essential with these, or simplify.
-
-/// A function that blends two integer values and an integer range, returning
-/// the result.
-type Blendi = fn(a:i64, b:i64) -> i64;
-type BlendRangedi = fn(a:i64, b:i64, minimum: i64, maximum: i64) -> i64;
-
 struct DiscreteBlenderTable {
     clobber: Blendi,
     max: Blendi,
@@ -63,29 +64,35 @@ struct DiscreteBlenderTable {
     abs_min: Blendi,
 }
 
-// A static lookup table of high-level blend modes to implementing functions
+/// A static lookup table mapping high-level (aesthetic) blend modes to
+/// specific implementations.
 enum BlenderTable {
     // there must be a less awkward way to do this...
     ContinuousBlenders(ContinuousBlenderTable),
     DiscreteBlenders(DiscreteBlenderTable),
 }
 
-// Topology descriptors constrain the parametric range for all attribute values.
+/// Topology descriptors constrain and shape the parametric space for all
+/// attribute values.
 pub struct Topo {
-    // Quasi-continuous (encoded as f64) or discrete (encoded as i64)
+    /// Quasi-continuous (encoded as f64) or discrete (encoded as i64).
     continuous: bool,
 
-    // Interpolation aesthetically encouraged
+    /// Hint: interpolation aesthetically encouraged.
     blend_encouraged: bool,
 
-    // Interpolation logically or mechanically meaningful
+    /// Hint: interpolation logically or mechanically meaningful.
     blend_meaningful: bool,
+
+    /// Blender functions appropriate to blending pairs of values with this
+    /// topology.
     blenders: BlenderTable,
 }
 
-// Naturally continuous, values bounded, interpolation recommended.
-// Range: [0.0,1.0]
-// Example: dimmer
+/// Naturally continuous, values bounded, interpolation recommended.
+/// No wrap-around.
+/// Range: [0.0,1.0]
+/// Example: dimmer
 pub static continuous_euclidian_unipolar: Topo = Topo {
     continuous: true,
     blend_encouraged: true,
@@ -105,9 +112,10 @@ pub static continuous_euclidian_unipolar: Topo = Topo {
     })
 };
 
-// // Naturally continuous, values bounded, interpolation recommended.
-// // Range: [-1.0,1.0]
-// // Example: X- or Y-position on a bounded pivot or linear track
+/// Naturally continuous, values bounded, interpolation recommended.
+/// No wrap-around. Center on 0.
+/// Range: [-1.0,1.0]
+/// Example: X- or Y-position on a bounded pivot or linear track
 pub static continuous_euclidian_bipolar: Topo = Topo {
     continuous: true,
     blend_encouraged: true,
@@ -127,9 +135,10 @@ pub static continuous_euclidian_bipolar: Topo = Topo {
     })
 };
 
-// // Naturally continuous, values wrap, interpolation recommended.
-// // Range: [0.0,1.0]
-// // Example: angle of rotation
+/// Naturally continuous, values wrap around the outer limits, interpolation
+/// recommended.
+/// Range: [0.0,1.0]
+/// Example: angle of rotation
 pub static continuous_ring_unipolar: Topo = Topo {
     continuous: true,
     blend_encouraged: true,
@@ -149,10 +158,10 @@ pub static continuous_ring_unipolar: Topo = Topo {
     })
 };
 
-// // Naturally continuous, values wrap, interpolation recommended, with a
-// // natural center point at 0.
-// // Range: [-1.0,1.0]
-// // Example: fully commutated pan or tilt
+/// Naturally continuous, values wrap aroud the outer limits, interpolation
+/// recommended, with a natural center point at 0.
+/// Range: [-1.0,1.0]
+/// Example: fully commutated pan or tilt
 pub static continuous_ring_bipolar: Topo = Topo {
     continuous: true,
     blend_encouraged: true,
@@ -172,15 +181,18 @@ pub static continuous_ring_bipolar: Topo = Topo {
     })
 };
 
+/// Placeholder for integer blender methods that require more research before
+/// we decide how to implement them. (For example, we're not sure how to
+/// define multiply mode for discrete values.) Let's just clobber for now.
 fn iblend_TODO(a: i64, _b: i64) -> i64 {
-    // Not sure how to define multiply mode for discrete values. Clobber for now.
     a
 }
 
-// Naturally discontinuous, values wrap, interpolation conceivably
-// mechanically/logically meaningful, but aesthetically discouraged.
-// Range: Int indexed from 0
-// Example: litho index
+/// Naturally discontinuous, values wrap around the outer limits. Interpolation
+/// is conceivably mechanically or logically meaningful, but it is aesthetically
+/// discouraged.
+/// Range: Int indexed from 0 TODO: or with a range?
+/// Example: litho index
 pub static discrete_ring: Topo = Topo {
     continuous: false,
     blend_encouraged: false,
@@ -200,10 +212,10 @@ pub static discrete_ring: Topo = Topo {
     })
 };
 
-// Naturally discontinuous, values bounded, interpolation conceivably
-// mechanically/logically meaningful, but aesthetically discouraged.
-// Range: Int indexed from 0
-// Example: linear 35mm slide tray index
+/// Naturally discontinuous, values bounded. Interpolation is conceivably
+/// mechanically or logically meaningful, but it is aesthetically discouraged.
+/// Range: Int indexed from 0
+/// Example: linear 35mm slide tray index
 pub static discrete_array: Topo = Topo {
     continuous: false,
     blend_encouraged: false,
@@ -223,12 +235,13 @@ pub static discrete_array: Topo = Topo {
     })
 };
 
-// Naturally discontinuous, values bounded, interpolation
-// mechanically/logically inconceivable and therefore forbidden.
-// Nevertheless, they can be numerically computed, so we implement them to make
-// experimenters happy -- and for uniformity.
-// Range: Int indexed from 0
-// Example: color wheel mode
+/// Naturally discontinuous, values bounded. Interpolation is mechanically or
+/// logically inconceivable and therefore aesthetically forbidden.
+/// Nevertheless, interpolated values can be numerically computed, so we
+/// implement them to make glitchers and experimenters happy -- and for
+/// uniformity and completeness.
+/// Range: Int indexed from 0
+/// Example: color wheel mode
 pub static discrete_set: Topo = Topo {
     continuous: false,
     blend_encouraged: false,
