@@ -1,9 +1,9 @@
 use blend::fblend_clobber;
 use blend::fblend_euclid_max;
 use blend::fblend_euclid_min;
-use blend::fblend_euclid_median;
-use blend::fblend_ring_uni_median;
-use blend::fblend_ring_bi_median;
+use blend::fblend_euclid_mean;
+use blend::fblend_ring_uni_mean;
+use blend::fblend_ring_bi_mean;
 use blend::fblend_euclid_multiply;
 use blend::fblend_euclid_uni_add;
 use blend::fblend_ring_uni_add;
@@ -91,7 +91,7 @@ pub static continuous_euclidian_unipolar: Topo = Topo {
         clobber: fblend_clobber,
         max: fblend_euclid_max,
         min: fblend_euclid_min,
-        median: fblend_euclid_median,
+        median: fblend_euclid_mean,
         add: fblend_euclid_uni_add,
         subtract: fblend_euclid_uni_subtract,
         add_modulus: fblend_ring_uni_add,
@@ -113,7 +113,7 @@ pub static continuous_euclidian_bipolar: Topo = Topo {
         clobber: fblend_clobber,
         max: fblend_euclid_max,
         min: fblend_euclid_min,
-        median: fblend_euclid_median,
+        median: fblend_euclid_mean,
         add: fblend_euclid_bi_add,
         subtract: fblend_euclid_bi_subtract,
         add_modulus: fblend_ring_bi_add,
@@ -135,7 +135,7 @@ pub static continuous_ring_unipolar: Topo = Topo {
         clobber: fblend_clobber,
         max: fblend_euclid_max,
         min: fblend_euclid_min,
-        median: fblend_ring_uni_median,
+        median: fblend_ring_uni_mean,
         add: fblend_ring_uni_add,
         subtract: fblend_ring_uni_subtract,
         add_modulus: fblend_ring_uni_add,
@@ -158,7 +158,7 @@ pub static continuous_ring_bipolar: Topo = Topo {
         clobber: fblend_clobber,
         max: fblend_euclid_max,
         min: fblend_euclid_min,
-        median: fblend_ring_bi_median,
+        median: fblend_ring_bi_mean,
         add: fblend_ring_bi_add,
         subtract: fblend_ring_bi_subtract,
         add_modulus: fblend_ring_bi_add,
