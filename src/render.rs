@@ -11,59 +11,40 @@ use range::DmxRange;
 use range::SpinDmxRangeMatrix;
 use range::UnipolarDmxRangeMatrix;
 
-// TODO Not sure how to get the polymorphism in DmxRangeType below:
-// pub type dmxRendererWithRange = fn(n: f64, range: &DmxRangeType, offset: uint, buffer: &mut[u8]) -> u8;
-// pub type dmxRenderer = fn(n: f64, offset: uint, buffer: &mut[u8]) -> u8;
-// DmxRangeType might be any one of these:
-//  BipolarDmxRangeMatrix
-//  UnipolarDmxRangeMatrix
-//  DmxRange
-//  BooleanDmxRangeMatrix
-//  SpinDmxRangeMatrix
-
 // Note: these things say 'render Dmx', but really they mean 'render byte(s)'
 // ...with little or no modification, then can write to any &mut[u8], for
 // example an OPC channel (which is like a MIDI channel, akin to a Dmx universe)
 // listens to 8bit subpixel values, just with a much larger 'universe size'
 // (per OPC channel).
 
-// skipping old 'Array' and 'ArrayMapped' renderers because hopefully we can
-// just use a tree renderer, map every leaf, and forget the array vs. non-array
-// distinction. specifically, skipped these items from DmxAttributeRenderers.rb:
-//    def Model::renderDmxFloatArray(attribute,floatArray,dmxChannels,fixture=nil)
-//    def Model::renderDmxFloatArrayMapped(attribute,floatArray,dmxChannels,fixture=nil)
-//    def Model::renderDmxDoubleArrayBigEndian(attribute,doubleArray,dmxChannels,fixture=nil)
-//    def Model::renderDmxDoubleArrayBipolarBigEndian(attribute,doubleArray,dmxChannels,fixture=nil)
-//    def Model::renderDmxDoubleArrayBigEndianInterlaced(attribute,doubleArray,dmxChannels,fixture=nil,fineChannelOffset=0)
-//    also skipped this # TODO: renderDmxDoubleArrayBipolarBigEndianInterlaced
-
-// Write a single unipolar value to the Dmx channel at attribute.offset.
-// Clip x to the range [0..1.0].
-// TODO rename - put 'unipolar' in the name
-pub fn renderDmxFloat(n: f64, offset: uint, buffer: &mut[u8]) -> u8 {
+//// Write a single unipolar value to the Dmx channel at attribute.offset.
+//// Clip x to the range [0..1.0].
+pub fn render_dmx_float_unipolar(n: f64, offset: uint, buffer: &mut[u8]) -> u8 {
     // TODO exception handling for out of range offset (here and below)
     buffer[offset] = limit_unipolar_unit_f64_to_u8(n);
     buffer[offset]
 }
 
-// Write a single bipolar value to the Dmx channels at attribute.offset.
-//
-// Assume x is a number in the range [-1.0..1.0].
-// Out of range values are clipped to this range (for now).
-//
-// The mapping is linear. For example,
-//   x=0 maps to the channel value 127.
-//   x=-1.0 maps to the channel value 0.
-//   x=1.0 maps to the channel value 255.
-pub fn renderDmxFloatBipolar(n: f64, offset: uint, buffer: &mut[u8]) -> u8 {
+/// Write a single bipolar value to the Dmx channels at attribute.offset.
+///
+/// Assume x is a number in the range [-1.0..1.0].
+/// Out of range values are clipped to this range (for now).
+///
+/// The mapping is linear. For example,
+///   x=0 maps to the channel value 127.
+///   x=-1.0 maps to the channel value 0.
+///   x=1.0 maps to the channel value 255.
+pub fn render_dmx_float_bipolar(n: f64, offset: uint, buffer: &mut[u8]) -> u8 {
     buffer[offset] = limit_bipolar_unit_f64_to_u8(n);
     buffer[offset]
 }
 
-// Write a single bipolar value to the Dmx channel at offset.
-// Clip n to [-1.0..1.0].
+/// Write a single bipolar value to the Dmx channel at offset.
+/// Clip n to [-1.0..1.0].
 // TODO: test behavior of reverse ranges.
-pub fn renderDmxFloatBipolarWithRange(n: f64, range: &BipolarDmxRangeMatrix, offset: uint, buffer: &mut[u8]) -> u8 {
+pub fn render_dmx_float_bipolar_with_range(n: f64,
+        range: &BipolarDmxRangeMatrix, offset: uint, buffer: &mut[u8]) -> u8 {
+
     let nn = limit_bipolar_unit_f64(n);
     buffer[offset] =
         if nn == 0.0 {
@@ -96,10 +77,12 @@ pub fn renderDmxFloatBipolarWithRange(n: f64, range: &BipolarDmxRangeMatrix, off
     buffer[offset]
 }
 
-// Write a single unipolar value to the Dmx channel at offset.
-// Clip n to the range [0.0..1.0].
+/// Write a single unipolar value to the Dmx channel at offset.
+/// Clip n to the range [0.0..1.0].
 // TODO add 'Unipolar' or 'Uni' to name
-pub fn renderDmxFloatWithRange(n: f64, range: &UnipolarDmxRangeMatrix, offset: uint, buffer: &mut[u8]) -> u8 {
+pub fn render_dmx_float_unipolar_with_range(n: f64,
+        range: &UnipolarDmxRangeMatrix, offset: uint, buffer: &mut[u8]) -> u8 {
+
     let nn = limit_unipolar_unit_f64(n);
     buffer[offset] =
         if nn <= 0.0 {
@@ -117,11 +100,13 @@ pub fn renderDmxFloatWithRange(n: f64, range: &UnipolarDmxRangeMatrix, offset: u
     buffer[offset]
 }
 
-// Write a single unipolar value to a contiguous pair of Dmx channels.
-// Clip n to the range [0..1.0].
-// This is a big-endian implementation. HSB is written first, then LSB.
-// TODO add 'BigEndian' to the name?
-pub fn renderDmxDouble(n: f64, offset: uint, buffer: &mut[u8]) -> (u8, u8) {
+/// Write a single unipolar value to a contiguous pair of Dmx channels.
+/// Clip n to the range [0..1.0].
+/// This is a big-endian implementation. HSB is written first, then LSB.
+// TODO little-endian equivalent
+pub fn render_dmx_double_big_endian(n: f64, offset: uint, buffer: &mut[u8])
+        -> (u8, u8) {
+
     let nn = limit_unipolar_unit_f64(n);
     let (hsb, lsb) =
         if nn <= 0.0 {
@@ -139,22 +124,24 @@ pub fn renderDmxDouble(n: f64, offset: uint, buffer: &mut[u8]) -> (u8, u8) {
     (hsb, lsb)
 }
 
-// Interpret an integer index n as a Dmx channel value.
-//
-// attribute.range must be an nx2 sequence of channel value Ranges<u16>
-// aligned to valid index values, like this:
-// [
-//   index_0_range, - all the values equivalent to index 0
-//   index_1_range, - all the values equivalent to index 1
-//   ...,
-//   index_n_range, - all the values equivalent to index 2
-// ]
-// TODO: declare a type for [DmxRange]? DmxRangeVec?
-//
-// The parameter index must be a valid integer index into attribute.range.
-// (For now, out of range indices revert to 0.)
-// TODO enum for this kind of IndexedRangeMatrix? and move relevant docs into it.
-pub fn renderDmxIntIndexedWithRange(n: i64, range: &~[DmxRange], offset: uint, buffer: &mut[u8]) -> u8 {
+/// Interpret an integer index n as a Dmx channel value.
+///
+/// attribute.range must be an nx2 sequence of channel value Ranges<u16>
+/// aligned to valid index values, like this:
+/// [
+///   index_0_range, - all the values equivalent to index 0
+///   index_1_range, - all the values equivalent to index 1
+///   ...,
+///   index_n_range, - all the values equivalent to index 2
+/// ]
+/// TODO: declare a type for [DmxRange]? DmxRangeVec?
+///
+/// The parameter index must be a valid integer index into attribute.range.
+/// (For now, out of range indices revert to 0.)
+// TODO for uniformity, make an enum for this kind of IndexedRangeMatrix? if so, move relevant docs into it.
+pub fn render_dmx_int_indexed_with_range(n: i64, range: &~[DmxRange],
+        offset: uint, buffer: &mut[u8]) -> u8 {
+
     // TODO: deal with possibility of out-of-range n, for 32 bit systems
     if n < range.len() as i64 {
         // FUTURE throw exception if index is out of range?
@@ -166,7 +153,9 @@ pub fn renderDmxIntIndexedWithRange(n: i64, range: &~[DmxRange], offset: uint, b
 }
 
 // Interpret a boolean value n as a Dmx channel value.
-pub fn renderDmxBooleanWithRange(n: bool, range: &BooleanDmxRangeMatrix, offset: uint, buffer: &mut[u8]) -> u8 {
+pub fn render_dmx_boolean_with_range(n: bool, range: &BooleanDmxRangeMatrix,
+        offset: uint, buffer: &mut[u8]) -> u8 {
+
     buffer[offset] =
         if n {
             range.t.min
@@ -176,15 +165,17 @@ pub fn renderDmxBooleanWithRange(n: bool, range: &BooleanDmxRangeMatrix, offset:
     buffer[offset]
 }
 
-// Render a bipolar value as two Dmx channels: spin direction and spin speed.
-//
-// For cases where one channel is spin mode (reverse, stop, forward) and
-// the other channel is speed (zero to max, continuous).
-//
-// The incoming spin value n is a single float in the range [-1.0,1.0].
-//
-// Renders two channels. The first channel is mode, the next speed.
-pub fn renderDmxSpinBipolar2ChWithRange(n: f64, range: &SpinDmxRangeMatrix, offset: uint, buffer: &mut[u8]) -> (u8, u8) {
+/// Render a bipolar value as two Dmx channels: spin direction and spin speed.
+///
+/// For cases where one channel is spin mode (reverse, stop, forward) and
+/// the other channel is speed (zero to max, continuous).
+///
+/// The incoming spin value n is a single float in the range [-1.0,1.0].
+///
+/// Renders two channels. The first channel is mode, the next speed.
+pub fn render_dmx_spin_bipolar_2ch_with_range(n: f64,
+        range: &SpinDmxRangeMatrix, offset: uint, buffer: &mut[u8]) -> (u8, u8) {
+
     let nn = limit_bipolar_unit_f64(n);
     let (mode, speed) =
         if nn == 0.0 { // motionless
@@ -202,11 +193,11 @@ pub fn renderDmxSpinBipolar2ChWithRange(n: f64, range: &SpinDmxRangeMatrix, offs
     (mode, speed)
 }
 
-// Profiles consist of these render tuples: one rendering function, plus a
-// transformation matrix required by the rendering function. The rendering
-// function uses the matrix to map incoming control values to actual protocol-
-// level values (like DMX levels) at particular channels (offsets) in the frame
-// buffer.
+/// Profiles consist of these render tuples: one rendering function, plus a
+/// transformation matrix required by the rendering function. The rendering
+/// function uses the matrix to map incoming control values to actual protocol-
+/// level values (like DMX levels) at particular channels (offsets) in the frame
+/// buffer.
 pub enum DmxAttributeRenderer {
     DmxFloatRenderer(fn(n: f64, offset: uint, buffer: &mut[u8]) -> u8),
 
@@ -215,7 +206,6 @@ pub enum DmxAttributeRenderer {
         BipolarDmxRangeMatrix
     ),
 
-    // TODO get consistent about 'Uni' vs. 'Unipolar' in fn names
     DmxFloatUnipolarWithRangeRenderer(
         fn(n: f64, range: &UnipolarDmxRangeMatrix, offset: uint, buffer: &mut[u8]) -> u8,
         UnipolarDmxRangeMatrix
