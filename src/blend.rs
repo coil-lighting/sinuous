@@ -16,26 +16,35 @@ pub fn iblend_clobber(a:i64, _b:i64) -> i64 {
     a
 }
 
+// TODO REF minimum, maximum to use real range structs
+
+/// Given two attribute values within a range, return the sum of the two,
+/// limited to the specified range.
 pub fn iblend_euclid_add(a: i64, b: i64, minimum: i64, maximum: i64) -> i64 {
     limit_euclid_i64(a + b, minimum, maximum)
 }
 
+/// Given two attribute values within a range, return the difference of the two,
+/// limited to the specified range.
 pub fn iblend_euclid_subtract(a: i64, b: i64, minimum: i64, maximum: i64) -> i64 {
     limit_euclid_i64(a - b, minimum, maximum)
 }
 
-/// this could be simplified for cases where minimum is always 0.
+/// Return the sum of two attribute values, wrapping around the outer limits
+/// specified by the given range.
 pub fn iblend_ring_add(a: i64, b: i64, minimum: i64, maximum: i64) -> i64 {
     wrap_ring_i64(a + b, minimum, maximum)
 }
 
-/// this could be simplified for cases where minimum is always 0.
+/// Return the difference of two attribute values. Wrap around the outer limits
+/// specified by the given range.
 pub fn iblend_ring_subtract(a: i64, b: i64, minimum: i64, maximum: i64) -> i64 {
     wrap_ring_i64(a - b, minimum, maximum)
 }
 
 /// Return the average (median) of Euclidian inputs a and b, rounding to the
 /// nearest integer.
+///
 /// N.B. Rounding of *.5 numbers (1.5, -1.5) follows the behavior of Rust's
 /// round function, which rounds positive halves up and negative halves
 /// down.
@@ -130,7 +139,7 @@ pub fn fblend_euclid_min(a: f64, b: f64) -> f64 {
 
 /// If abs(a) is greater than b, return a, else b. If a and b have the
 /// same absolute value, return a.
-pub fn fblend_euclidAbsMax(a: f64, b: f64) -> f64 {
+pub fn fblend_euclid_abs_max(a: f64, b: f64) -> f64 {
     if a.abs() >= b.abs() {
         a
     } else {
@@ -138,9 +147,9 @@ pub fn fblend_euclidAbsMax(a: f64, b: f64) -> f64 {
     }
 }
 
-/// Compliment of fblend_euclidAbsMax. If a and b have the same absolute value,
-/// return b.
-pub fn fblend_euclidAbsMin(a: f64, b: f64) -> f64 {
+/// Compliment of fblend_euclid_abs_max. If a and b have the same absolute,
+/// value, return b.
+pub fn fblend_euclid_abs_min(a: f64, b: f64) -> f64 {
     if a.abs() < b.abs() {
         a
     } else {

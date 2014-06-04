@@ -1,7 +1,7 @@
-//! Wrapping, normalization, and limiting primitives.
+//! Wrapping, normalization, and limiting primitives for numeric computations.
 
 // TODO: is it possible to have a generic decl for pairsort_*() without
-// resorting to pointers or enums? It must be.
+// resorting to pointers, enums, or dynamic lookup? It must be.
 
 /// Sort a and b in ascending order.
 pub fn pairsort_u8(a: u8, b: u8) -> (u8, u8) {
