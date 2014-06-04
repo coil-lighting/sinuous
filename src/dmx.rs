@@ -30,22 +30,21 @@ pub struct DmxMap {
     pub renderer: DmxAttributeRenderer,
 }
 
-pub struct DmxUniverse<'a> {
+pub struct DmxUniverse {
     // Just a sketch...
     pub id: u32, // TEMP
     pub name: ~str,
-    pub frame: &'a mut [u8], // definitely not its final resting place... and should it be &[u8]?
+    pub frame: [u8, ..512], // TODO: REF to Vec<u8>, no box says CM
 }
 
-pub struct DmxAddr {
-    // FUTURE: consider what it would take to render safely in parallel
-    universe: Box<DmxUniverse>,
-    address: uint, // TODO: statically constrain to 0..511 if possible
-    length: uint, // the number of byte-sized channels in this universe
+pub struct DmxAddr<'a> {
+    universe: &'a mut DmxUniverse,
+    address: uint, // TODO: statically constrain to 0..511 if possible in Rust
+    length: uint, // the number of byte-sized channels occuped by this Profile in a universe
 }
 
-impl DmxAddr {
-    pub fn slice_universe<'a>(&'a self) -> &'a mut [u8] {
+impl<'a> DmxAddr<'a> {
+    pub fn slice_universe<'a>(&'a mut self) -> &'a mut [u8] {
         self.universe.frame.mut_slice(self.address, self.address + self.length)
     }
 }

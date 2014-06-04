@@ -202,6 +202,11 @@ pub fn renderDmxSpinBipolar2ChWithRange(n: f64, range: &SpinDmxRangeMatrix, offs
     (mode, speed)
 }
 
+// Profiles consist of these render tuples: one rendering function, plus a
+// transformation matrix required by the rendering function. The rendering
+// function uses the matrix to map incoming control values to actual protocol-
+// level values (like DMX levels) at particular channels (offsets) in the frame
+// buffer.
 pub enum DmxAttributeRenderer {
     DmxFloatRenderer(fn(n: f64, offset: uint, buffer: &mut[u8]) -> u8),
 

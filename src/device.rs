@@ -86,17 +86,18 @@ struct ProfileBranch {
     children: ~[ProfileNode],
 }
 
-enum Addr {
-    DmxAddrType(DmxAddr), // TODO universe + address
+enum Addr<'a> {
+    DmxAddrType(DmxAddr<'a>), // TODO universe + address
     // Midi_addrType,
     // OscAddrType,
     // OpenPixelControlAddrType,
     // ...
 }
 
-// TODO better name
-struct DevicePatch {
-    addr: Addr,
+
+// Use case: many physical technobeams all addressed to channel 1
+struct DevicePatch<'a> {
+    addr: Addr<'a>,
 
     // A DevicePatch has multiple locations in case more than one physical
     // device with the same address, is managed by one logical DevicePatch.
@@ -128,14 +129,14 @@ impl DeviceBranch {
     fn render(&self, buffer: &mut[u8]) {
         // TODO verify that this operates by reference, not by copy!
         for child in self.children.iter() {
-            match child {
+            match *child {
                 // Rust manual: "Patterns that bind variables default to binding
                 // to a copy or move of the matched value (depending on the
                 // matched value's type). This can be changed to bind to a
                 // reference by using the 'ref' keyword, or to a mutable
                 // reference using 'ref mut'."
-                &DeviceNodeBranch(ref d) => d.render(buffer),
-                &DeviceNodeEndpoint(ref d) => d.render(buffer)
+                DeviceNodeBranch(ref d) => d.render(buffer),
+                DeviceNodeEndpoint(ref d) => d.render(buffer)
             };
         }
     }
@@ -178,31 +179,31 @@ impl DeviceEndpoint {
         };
 
         // Adapt to the interface of the renderer in question.
-        match &dmx.renderer {
-            &DmxFloatRenderer(r) => {
+        match dmx.renderer {
+            DmxFloatRenderer(r) => {
                 r(nf, offset, buffer);
             },
-            &DmxFloatBipolarWithRangeRenderer(r, ref range) => {
+            DmxFloatBipolarWithRangeRenderer(r, ref range) => {
                 r(nf, range, offset, buffer);
             },
-            &DmxFloatUnipolarWithRangeRenderer(r, ref range) => {
+            DmxFloatUnipolarWithRangeRenderer(r, ref range) => {
                 r(nf, range, offset, buffer);
             },
-            &DmxDoubleRenderer(r) => {
+            DmxDoubleRenderer(r) => {
                 r(nf, offset, buffer);
             },
-            &DmxIntIndexedWithRangeRenderer(r, ref range) => {
+            DmxIntIndexedWithRangeRenderer(r, ref range) => {
                 r(ni, range, offset, buffer);
             },
-            &DmxBooleanWithRangeRenderer(r, ref range) => {
-                // Maybe do away with booleans and use ints?
+            DmxBooleanWithRangeRenderer(r, ref range) => {
+                // TODO do away with booleans and use int
                 let bi: bool = match ni {
                     0 => false,
                     _ => true
                 };
                 r(bi, range, offset, buffer);
             },
-            &DmxSpinBipolar2ChWithRangeRenderer(r, ref range) => {
+            DmxSpinBipolar2ChWithRangeRenderer(r, ref range) => {
                 r(nf, range, offset, buffer);
             },
         };
@@ -216,7 +217,7 @@ enum DeviceNode {
     DeviceNodeEndpoint(DeviceEndpoint),
 }
 
-struct Device {
+struct Device<'a> {
     profile: Profile,
     name: ~str,
     nickname: ~str, // shorter, to save space (defaults to name, truncated)
@@ -224,12 +225,12 @@ struct Device {
     // A Device has multiple addrs in case one logical device manages more than
     // one distinct device address. (See DevicePatch.locs for the case where
     // multiple physical devices all share the same address.)
-    patches: ~[DevicePatch],
+    patches: ~[DevicePatch<'a>],
     root: Box<DeviceNode>,
 }
 
-impl Device {
-    fn render(&self) {
+impl<'a> Device<'a> {
+    fn render(&mut self) {
         // Proposed: Assemble a list of slices, each a view on a universe's dmx
         // framebuffer, each slice aligned with the beginning of the device and
         // only as long as the device, to isolate damage.
@@ -245,9 +246,9 @@ impl Device {
         // corrupt other (non-overlapping) devices, but it also can't range
         // over the whole universe without belonging to a device that claims
         // the whole universe. Hopefully this is okay.
-        for patch in self.patches.iter() {
-            match &patch.addr {
-                &DmxAddrType(addr) => {
+        for patch in self.patches.mut_iter() {
+            match patch.addr {
+                DmxAddrType(ref mut addr) => {
                     let buffer: &mut [u8] = addr.slice_universe();
 
                     // TODO do not render redundantly if patched more than once (with the same protocol)?
