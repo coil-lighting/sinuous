@@ -1,42 +1,42 @@
 //! For modeling DMX attributes in DMX device profiles.
+//! If you have many of the same device, they will all share the same profile.
+
 use render::DmxAttributeRenderer;
 
-// # dmx_offset - Specifies insertion order within the serialized output.
-// # For DMX, this specifies byte offset (AKA channel offset) within the
-// # fixture's data array. Offset may be an int or a sequence of ints.
-// # If dmx_offset is an int, then this Attribute's rendered data is packed
-// # sequentially starting at the given offset. If dmx_offset is an int
-// # sequence, then this Attribute's rendered data occupies multiple channels
-// # which are not necessarily contiguous. Each rendered datum is rendered at
-// # its corresponding offset. For example, datum[2] would be rendered at
-// # offset[2]. This typically happens in a CMYK profile where K is not
-// # adjacent to C+M+Y. Only certain attribute types require mapped-
-// # multichannel (sequential) dmx_offsets; see also
-// # DMXAttributeRenderers.attributeTypes.
-
-// It is the responsibility of DeviceEndpoint.render() to interpret dmx_offset.
-// We might need to collapse this into the DmxAttributeRenderers.
+/// It is the responsibility of DeviceEndpoint.render() to interpret dmx_offset.
+/// Normally this value specifies insertion order within the serialized output.
+// REF: We might need to collapse this into the DmxAttributeRenderers.
 pub enum DmxAddressOffset {
-    DmxAddressOffsetSingle(uint),
+    DmxAddressOffsetSingle(uint), // Might not need anything else.
 
-    // DmxAddressOffsetMultiple(~[uint]), // Not yet implemented
-
-    // TODO Is it really necessary to use a hashmap here? I sure as hell hope not.
-    // DmxAddressOffsetMap(HashMap<~str, uint>), // Not yet implemented
+    // Not yet implemented, maybe not necessary: map to scattered, noncontiguous
+    // values in the output buffer, as is often the case with CMYK moving
+    // lights. (This might not be needed if we can achieve the same thing by
+    // composing CMYK as a C attribute + an M attribute + a Y attribute + a
+    // K attribute, each with its own offset.)
+    // DmxAddressOffsetMultiple(~[uint]),
 }
 
+/// Specify than an attribute should be rendered with a specific function at
+/// the given offset within the Device's slice of the DMX framebuffer.
+// REF: consider consolidating with DmxAddressOffset.
 pub struct DmxMap {
-    pub offset: DmxAddressOffset, // channel offset with the profile, e.g. pan @ ch3
+    /// For DMX, this is channel offset with the profile, e.g. pan @ ch3.
+    pub offset: DmxAddressOffset,
     pub renderer: DmxAttributeRenderer,
 }
 
+/// Identify a logical DMX universe. This universe may or may not be mapped to
+/// one or more output ports. Typically each universe is mapped to exactly one
+/// port.
 pub struct DmxUniverse {
-    // Just a sketch...
-    pub id: u32, // TEMP
+    pub id: u32,
     pub name: ~str,
-    pub frame: [u8, ..512], // TODO: REF to Vec<u8>, no box says CM
+    pub frame: [u8, ..512], // TODO: REF to Vec<u8>, "no box" says CM
 }
 
+/// Situate a Device within a slice of a DmxUniverse. For example, say that a
+/// particular RGB color changer occupies channels 1-3.
 pub struct DmxAddr<'a> {
     universe: &'a mut DmxUniverse,
     address: uint, // TODO: statically constrain to 0..511 if possible in Rust
@@ -44,25 +44,14 @@ pub struct DmxAddr<'a> {
 }
 
 impl<'a> DmxAddr<'a> {
+    /// Extract the writable slice of the DMX universe that belongs to a
+    /// particular Device. This prevents a Device from erroneously overwriting
+    /// portions of the framebuffer that do not belong to it. Note that we
+    /// deliberately make no effort in this architectural layer to prevent users
+    /// from defining overlapping Devices, because although it would be
+    /// unconventional, it may prove necessary in some experimental contexts.
+    /// A higher control layer should warn the user about conflicts/overlaps.
     pub fn slice_universe<'a>(&'a mut self) -> &'a mut [u8] {
         self.universe.frame.mut_slice(self.address, self.address + self.length)
     }
 }
-/*
-enum Addr {
-    DmxAddrType(DmxAddr), // TODO universe + address
-    // Midi_addrType,
-    // OscAddrType,
-    // OpenPixelControlAddrType,
-    // ...
-}
-
-// TODO better name
-struct DevicePatch {
-    addr: Addr,
-
-    // A DevicePatch has multiple locations in case more than one physical
-    // device with the same address, is managed by one logical DevicePatch.
-    locs: ~[Loc]
-}
-*/

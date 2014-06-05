@@ -46,8 +46,16 @@ pub enum AttributeValue {
     // ONLY IF THIS ATTRIBUTE GOVERNS A MODAL CLUSTER
     //     @clusterMethod=nil
 
+
 pub struct Attribute {
     name: String, // e.g. "iris"
+
+// IDEA: do away with dimensionality. make compound attributes just subtrees
+// of device space. then we can always unbundle, say, an xy effect into an x
+// and a y without having to write a separate model branch in the profile.
+// also, it gives us the option to have heterogeneous topos and datatypes
+// within a compound attribute.
+
     effect: (EffectType, EffectSubtype, EffectSubsubtype),
     topo: Box<Topo>,
     default: Option<AttributeValue>, // required if rendering is implemented
@@ -76,6 +84,8 @@ pub struct Profile {
 }
 
 pub enum ProfileNode {
+// TODO: REF PBranch and Attr into struct variants ... maybe only if we can prove the
+// functions will be the same for both? we'll have to experiment.
     PBranch(ProfileBranch), // branch node
     Attr(Attribute), // leaf node
 }

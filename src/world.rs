@@ -1,17 +1,20 @@
 //! Types to help locate devices in the real world (or a fictional 3D scene).
 
+/// A Device's cartesian position in space.
 pub struct Position {
     x: f64,
     y: f64,
     z: f64,
 }
 
+/// A Device's orientation in space.
 pub struct Orientation {
     pan: f64,  // yaw
     tilt: f64, // pitch
     roll: f64, // roll
 }
 
+/// A Device's oriented position in space.
 pub struct Loc {
     position: Position,
     orientation: Orientation,
