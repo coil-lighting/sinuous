@@ -18,7 +18,7 @@ use world::Loc;
 
 // Named subtypes for the primitive storage representing the numeric value for
 // a Device Attribute's instance.
-enum AttributeValue {
+pub enum AttributeValue {
     Continuous(f64),
     Discrete(i64), // TODO - decide whether to make this unsigned instead
 }
@@ -46,8 +46,8 @@ enum AttributeValue {
     // ONLY IF THIS ATTRIBUTE GOVERNS A MODAL CLUSTER
     //     @clusterMethod=nil
 
-struct Attribute {
-    name: ~str, // e.g. "iris"
+pub struct Attribute {
+    name: String, // e.g. "iris"
     effect: (EffectType, EffectSubtype, EffectSubsubtype),
     topo: Box<Topo>,
     default: Option<AttributeValue>, // required if rendering is implemented
@@ -66,27 +66,27 @@ struct Attribute {
 // suffice to describe everything from simple, 1 dimensional, nonmodal
 // attributes like a dimmer channel to complex, multidimensional, modal
 // attribute clusters such as mspeed-smoothed continuous litho wheel angle.
-struct Profile {
-    name: ~str,         // "Technobeam"
-    nickname: ~str,     // "Techno"
-    manufacturer: ~str, // "HES"
-    author: ~str,       // "e.g. Steve Jobs"
+pub struct Profile {
+    name: String,         // "Technobeam"
+    nickname: String,     // "Techno"
+    manufacturer: String, // "HES"
+    author: String,       // "e.g. Steve Jobs"
     version: int,       // 1, 2, 3...
     root: Box<ProfileNode>,
 }
 
-enum ProfileNode {
+pub enum ProfileNode {
     PBranch(ProfileBranch), // branch node
     Attr(Attribute), // leaf node
 }
 
-struct ProfileBranch {
-    name: ~str, // "Technobeam"
-    nickname: ~str, // "Techno"
+pub struct ProfileBranch {
+    name: String, // "Technobeam"
+    nickname: String, // "Techno"
     children: ~[ProfileNode],
 }
 
-enum Addr<'a> {
+pub enum Addr<'a> {
     DmxAddrType(DmxAddr<'a>), // TODO universe + address
     // Midi_addrType,
     // OscAddrType,
@@ -96,7 +96,7 @@ enum Addr<'a> {
 
 
 // Use case: many physical technobeams all addressed to channel 1
-struct DevicePatch<'a> {
+pub struct DevicePatch<'a> {
     addr: Addr<'a>,
 
     // A DevicePatch has multiple locations in case more than one physical
@@ -120,13 +120,13 @@ struct DevicePatch<'a> {
 // 3) A logical device which is part of the scenegraph. Maybe 'SceneDevice'?
 
 // TODO - optional custom labels for each node? currently just default to profile node labels
-struct DeviceBranch {
+pub struct DeviceBranch {
     profile_branch: Box<ProfileBranch>,
     children: ~[DeviceNode]
 }
 
 impl DeviceBranch {
-    fn render(&self, buffer: &mut[u8]) {
+    pub fn render(&self, buffer: &mut[u8]) {
         // TODO verify that this operates by reference, not by copy!
         for child in self.children.iter() {
             match *child {
@@ -142,13 +142,13 @@ impl DeviceBranch {
     }
 }
 
-struct DeviceEndpoint {
+pub struct DeviceEndpoint {
     attribute: Box<Attribute>,
     value: Option<AttributeValue>, // required if rendering is implemented for this attribute
 }
 
 impl DeviceEndpoint {
-    fn render(&self, buffer: &mut[u8]) {
+    pub fn render(&self, buffer: &mut[u8]) {
 
         let n: AttributeValue = match self.value {
             Some(v) => v,
@@ -212,15 +212,15 @@ impl DeviceEndpoint {
 
 // A device is an actual instance of a device. A device is described by its
 // Profile tree.
-enum DeviceNode {
+pub enum DeviceNode {
     DeviceNodeBranch(DeviceBranch),
     DeviceNodeEndpoint(DeviceEndpoint),
 }
 
-struct Device<'a> {
+pub struct Device<'a> {
     profile: Profile,
-    name: ~str,
-    nickname: ~str, // shorter, to save space (defaults to name, truncated)
+    name: String,
+    nickname: String, // shorter, to save space (defaults to name, truncated)
 
     // A Device has multiple addrs in case one logical device manages more than
     // one distinct device address. (See DevicePatch.locs for the case where
@@ -230,7 +230,7 @@ struct Device<'a> {
 }
 
 impl<'a> Device<'a> {
-    fn render(&mut self) {
+    pub fn render(&mut self) {
         // Proposed: Assemble a list of slices, each a view on a universe's dmx
         // framebuffer, each slice aligned with the beginning of the device and
         // only as long as the device, to isolate damage.

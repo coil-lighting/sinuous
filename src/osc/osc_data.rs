@@ -16,6 +16,47 @@ pub enum OscPacket {
 	}
 }
 
+/// Find out if a packet contains a specified OSC address.
+pub fn packet_has_addr(packet: &OscPacket, addr_match: &str) -> bool {
+	match *packet {
+		OscMessage{addr: ref addr, args: _} => addr_match == *addr,
+		OscBundle{time_tag: _, conts: ref conts} => {
+			for subpacket in conts.iter() {
+				if packet_has_addr(subpacket, addr_match) { return true; }
+			}
+			false
+		}
+	}
+}
+
+/// Get the args associated with the given address.
+pub fn get_args_with_addr(packet: OscPacket, addr_match: &str) -> Option<Vec<OscArg>> {
+
+	match packet {
+		OscMessage{addr: addr, args: args} => {
+			if addr_match == addr {
+				Some(args)
+			}
+			else {
+				None
+			}
+		},
+		OscBundle{ time_tag: _, conts: conts} => {
+			let mut arg_vec = Vec::new();
+			for subpacket in conts.move_iter() {
+				match get_args_with_addr(subpacket, addr_match) {
+					Some(a) => arg_vec.push_all_move(a),
+					None => ()
+				}
+			}
+			if arg_vec.is_empty() {
+				return None;
+			}
+			Some(arg_vec)
+		}
+	}
+}
+
 // enum to contain the allowed OSC argument types
 // this is the 1.0 specification, may want to look into 1.1 in the future
 #[deriving(Show,Clone,Eq,Ord)]
@@ -111,3 +152,53 @@ macro_rules! unwrap_if(
 )
 
 pub type OscTimeTag = (u32, u32);
+
+
+#[test]
+fn test_packet_has_addr(){
+	let p1 = OscMessage{addr: ~"hello/test/address", args: vec!(OscInt(0))};
+	let p2 = OscBundle{
+		time_tag: (0,1),
+		conts: vec!(
+			OscMessage{addr: ~"hello/another/test", args: vec!(OscFloat(1.0))},
+			OscMessage{addr: ~"whatwhat/test/again", args: vec!(OscStr(~"payload"))}
+			)
+	};
+
+	assert!(packet_has_addr(&p1, "hello/test/address"));
+	assert!(packet_has_addr(&p2, "hello/another/test"));
+	assert!(packet_has_addr(&p2, "whatwhat/test/again"));
+
+	assert!(! packet_has_addr(&p1, "ouch"));
+	assert!(! packet_has_addr(&p2, "wooooo"));
+	assert!(! packet_has_addr(&p2, ""));
+}
+
+#[test]
+fn test_get_args_with_addr(){
+	let p1 = OscMessage{addr: ~"hello/test/address", args: vec!(OscInt(123), OscFloat(1.0), OscStr(~"I am a test string"))};
+	let p2 = OscBundle{
+		time_tag: (0,1),
+		conts: vec!(
+			OscMessage{addr: ~"hello/another/test", args: vec!(OscFloat(3.0), OscFloat(1.5))},
+			OscMessage{addr: ~"whatwhat/test/again", args: vec!(OscStr(~"payload"))}
+			)
+	};
+
+	let p3 = OscBundle{
+		time_tag: (0,1),
+		conts: vec!(
+			OscMessage{addr: ~"double/addr/test", args: vec!(OscFloat(3.0), OscFloat(1.5))},
+			OscMessage{addr: ~"double/addr/test", args: vec!(OscStr(~"payload"))}
+			)
+	};
+
+	assert_eq!(get_args_with_addr(p1.clone(), "hello/test/address"), Some(vec!(OscInt(123), OscFloat(1.0), OscStr(~"I am a test string"))));
+	assert_eq!(get_args_with_addr(p1, "hello"), None);
+
+	assert_eq!(get_args_with_addr(p2.clone(), "hello/another/test"), Some(vec!(OscFloat(3.0), OscFloat(1.5))));
+	assert_eq!(get_args_with_addr(p2.clone(), "whatwhat/test/again"), Some(vec!(OscStr(~"payload"))));
+	assert_eq!(get_args_with_addr(p2.clone(), "whatwhat"), None);
+
+	assert_eq!(get_args_with_addr(p3, "double/addr/test"), Some(vec!(OscFloat(3.0), OscFloat(1.5), OscStr(~"payload"))));
+}

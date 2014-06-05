@@ -36,7 +36,7 @@ pub fn blend_sigs(top: Signal, mut bot: Signal, mode: BlendMode) -> Signal {
 
 	// iterate over the entries in the top signal layer
 	for (desc_top,val_top) in top.move_iter() {
-		// for each entry, insert into top if not present or blend if collision
+		// for each entry, insert into bottom if not present or blend if collision
 		match bot.find_copy(&desc_top) {
 			Some(val_bot) => {
 				bot.insert(desc_top, val_top.blend_over(val_bot, mode));
