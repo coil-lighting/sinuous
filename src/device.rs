@@ -96,8 +96,8 @@ pub struct ProfileBranch {
     children: ~[ProfileNode],
 }
 
-pub enum Addr<'a> {
-    DmxAddrType(DmxAddr<'a>), // TODO universe + address
+pub enum Addr {
+    DmxAddrType(DmxAddr), // TODO universe + address
     // Midi_addrType,
     // OscAddrType,
     // OpenPixelControlAddrType,
@@ -106,8 +106,8 @@ pub enum Addr<'a> {
 
 
 // Use case: many physical technobeams all addressed to channel 1
-pub struct DevicePatch<'a> {
-    addr: Addr<'a>,
+pub struct DevicePatch {
+    addr: Addr,
 
     // A DevicePatch has multiple locations in case more than one physical
     // device with the same address, is managed by one logical DevicePatch.
@@ -227,7 +227,7 @@ pub enum DeviceNode {
     DeviceNodeEndpoint(DeviceEndpoint),
 }
 
-pub struct Device<'a> {
+pub struct Device {
     profile: Profile,
     name: String,
     nickname: String, // shorter, to save space (defaults to name, truncated)
@@ -235,11 +235,11 @@ pub struct Device<'a> {
     // A Device has multiple addrs in case one logical device manages more than
     // one distinct device address. (See DevicePatch.locs for the case where
     // multiple physical devices all share the same address.)
-    patches: ~[DevicePatch<'a>],
+    patches: ~[DevicePatch],
     root: Box<DeviceNode>,
 }
 
-impl<'a> Device<'a> {
+impl Device {
     pub fn render(&mut self) {
         // Proposed: Assemble a list of slices, each a view on a universe's dmx
         // framebuffer, each slice aligned with the beginning of the device and
@@ -258,8 +258,28 @@ impl<'a> Device<'a> {
         // the whole universe. Hopefully this is okay.
         for patch in self.patches.mut_iter() {
             match patch.addr {
-                DmxAddrType(ref mut addr) => {
-                    let buffer: &mut [u8] = addr.slice_universe();
+                DmxAddrType(ref mut dmx_addr) => {
+
+                    // Why this extra song and dance around the universe reference?
+                    // The Universe is wrapped in a RefCell, so we need to try to
+                    // get a mutable reference to the contents, which could fail.
+                    // Also, the RefMut that is returned determines the lifetime of
+                    // the &mut we get from it, so we need to hold it in this scope.
+                    match dmx_addr.try_get_univ_ref() {
+                        Some(mut u_ref) => {
+                            let buffer = dmx_addr.slice_universe(&mut u_ref);
+
+                            match *self.root {
+                                DeviceNodeBranch(ref d) => d.render(buffer),
+                                DeviceNodeEndpoint(ref d) => d.render(buffer)
+                            };
+
+                        },
+                        None => () // if something else is already writing to
+                        // the universe buffer, we can't get access.  give up.
+                    }
+                    /*
+                    let (buffer, univ_ref)  = dmx_addr.slice_universe();
 
                     // TODO do not render redundantly if patched more than once (with the same protocol)?
                     // TODO? track most recent profile slice as we descend the tree
@@ -270,6 +290,7 @@ impl<'a> Device<'a> {
                         DeviceNodeBranch(ref d) => d.render(buffer),
                         DeviceNodeEndpoint(ref d) => d.render(buffer)
                     };
+                    */
                 }
             }
         }

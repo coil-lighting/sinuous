@@ -3,6 +3,10 @@
 
 use render::DmxAttributeRenderer;
 
+use std::cell::RefCell;
+use std::cell::RefMut;
+use std::rc::Rc;
+
 /// It is the responsibility of DeviceEndpoint.render() to interpret dmx_offset.
 /// Normally this value specifies insertion order within the serialized output.
 // REF: We might need to collapse this into the DmxAttributeRenderers.
@@ -37,13 +41,18 @@ pub struct DmxUniverse {
 
 /// Situate a Device within a slice of a DmxUniverse. For example, say that a
 /// particular RGB color changer occupies channels 1-3.
-pub struct DmxAddr<'a> {
-    universe: &'a mut DmxUniverse,
+pub struct DmxAddr {
+    universe: Rc<RefCell<DmxUniverse>>,
     address: uint, // TODO: statically constrain to 0..511 if possible in Rust
     length: uint, // the number of byte-sized channels occuped by this Profile in a universe
 }
 
-impl<'a> DmxAddr<'a> {
+impl DmxAddr {
+
+    pub fn try_get_univ_ref<'a>(&'a self) -> Option<RefMut<'a, DmxUniverse>> {
+        self.universe.deref().try_borrow_mut()
+    }
+
     /// Extract the writable slice of the DMX universe that belongs to a
     /// particular Device. This prevents a Device from erroneously overwriting
     /// portions of the framebuffer that do not belong to it. Note that we
@@ -51,7 +60,9 @@ impl<'a> DmxAddr<'a> {
     /// from defining overlapping Devices, because although it would be
     /// unconventional, it may prove necessary in some experimental contexts.
     /// A higher control layer should warn the user about conflicts/overlaps.
-    pub fn slice_universe<'a>(&'a mut self) -> &'a mut [u8] {
-        self.universe.frame.mut_slice(self.address, self.address + self.length)
+
+    pub fn slice_universe<'a>(&self, univ_ref: &'a mut RefMut<'a, DmxUniverse>) -> &'a mut [u8] {
+
+        univ_ref.deref_mut().frame.mut_slice(self.address, self.address + self.length)
     }
 }

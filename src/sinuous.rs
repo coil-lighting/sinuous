@@ -48,13 +48,13 @@ mod render;
 mod topo;
 mod world;
 
-/*
+
 fn main() {
 	println!("done.");
 }
-*/
 
 
+/*
 fn main() {
 
 	let mut univ = DmxUniverse {
@@ -108,3 +108,4 @@ fn main() {
 		})
 	};
 }
+*/
