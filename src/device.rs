@@ -57,7 +57,7 @@ pub struct Attribute {
 // within a compound attribute.
 
     effect: (EffectType, EffectSubtype, EffectSubsubtype),
-    topo: Box<Topo>,
+    topo: &'static Topo,
     default: Option<AttributeValue>, // required if rendering is implemented
     dmx: Option<DmxMap>, // required if DMX rendering is implemented
 }
@@ -79,8 +79,9 @@ pub struct Profile {
     nickname: String,     // "Techno"
     manufacturer: String, // "HES"
     author: String,       // "e.g. Steve Jobs"
+    date: String,       // maybe we want to make this some kind of timestamp type
     version: int,       // 1, 2, 3...
-    root: Box<ProfileNode>,
+    root: ProfileNode,  // No need to Box<> this, the profile owns its profile tree.
 }
 
 pub enum ProfileNode {
@@ -93,7 +94,7 @@ pub enum ProfileNode {
 pub struct ProfileBranch {
     name: String, // "Technobeam"
     nickname: String, // "Techno"
-    children: ~[ProfileNode],
+    children: Vec<ProfileNode>,
 }
 
 pub enum Addr {
@@ -111,7 +112,7 @@ pub struct DevicePatch {
 
     // A DevicePatch has multiple locations in case more than one physical
     // device with the same address, is managed by one logical DevicePatch.
-    locs: ~[Loc]
+    locs: Vec<Loc>
 }
 
 // There seem to be three layers of deviceness:
@@ -130,12 +131,12 @@ pub struct DevicePatch {
 // 3) A logical device which is part of the scenegraph. Maybe 'SceneDevice'?
 
 // TODO - optional custom labels for each node? currently just default to profile node labels
-pub struct DeviceBranch {
-    profile_branch: Box<ProfileBranch>,
-    children: ~[DeviceNode]
+pub struct DeviceBranch<'p> { // a DeviceBranch cannot outlive the profile it points to ('p)
+    profile_branch: &'p ProfileBranch,
+    children: Vec<DeviceNode<'p>>
 }
 
-impl DeviceBranch {
+impl<'p> DeviceBranch<'p> {
     pub fn render(&self, buffer: &mut[u8]) {
         // TODO verify that this operates by reference, not by copy!
         for child in self.children.iter() {
@@ -152,12 +153,12 @@ impl DeviceBranch {
     }
 }
 
-pub struct DeviceEndpoint {
-    attribute: Box<Attribute>,
+pub struct DeviceEndpoint<'p> { // a DeviceEndpoint cannot outlive the profile it points to ('p)
+    attribute: &'p Attribute,
     value: Option<AttributeValue>, // required if rendering is implemented for this attribute
 }
 
-impl DeviceEndpoint {
+impl<'p> DeviceEndpoint<'p> {
     pub fn render(&self, buffer: &mut[u8]) {
 
         let n: AttributeValue = match self.value {
@@ -222,24 +223,33 @@ impl DeviceEndpoint {
 
 // A device is an actual instance of a device. A device is described by its
 // Profile tree.
-pub enum DeviceNode {
-    DeviceNodeBranch(DeviceBranch),
-    DeviceNodeEndpoint(DeviceEndpoint),
+// CSM: we probably want to replace these essentially placeholder types by
+// declaring DeviceBranch and DeviceEndpoint as struct variants of DeviceNode.
+pub enum DeviceNode<'p> {
+    DeviceNodeBranch(DeviceBranch<'p>),
+    DeviceNodeEndpoint(DeviceEndpoint<'p>),
 }
 
-pub struct Device {
-    profile: Profile,
+pub struct Device<'p> {
+    profile: &'p Profile,
     name: String,
     nickname: String, // shorter, to save space (defaults to name, truncated)
 
+    // we probably want to define a type to contain this information to help ease
+    // the job of the device patcher later
+    id: uint,
     // A Device has multiple addrs in case one logical device manages more than
     // one distinct device address. (See DevicePatch.locs for the case where
     // multiple physical devices all share the same address.)
-    patches: ~[DevicePatch],
-    root: Box<DeviceNode>,
+
+    // we may consider using the optimized type SmallVector, optimized for cases when
+    // the length is almost always 0 or 1
+    // syntax::util::small_vector::SmallVector
+    patches: Vec<DevicePatch>,
+    root: DeviceNode<'p>,
 }
 
-impl Device {
+impl<'p> Device<'p> {
     pub fn render(&mut self) {
         // Proposed: Assemble a list of slices, each a view on a universe's dmx
         // framebuffer, each slice aligned with the beginning of the device and
@@ -269,7 +279,7 @@ impl Device {
                         Some(mut u_ref) => {
                             let buffer = dmx_addr.slice_universe(&mut u_ref);
 
-                            match *self.root {
+                            match self.root {
                                 DeviceNodeBranch(ref d) => d.render(buffer),
                                 DeviceNodeEndpoint(ref d) => d.render(buffer)
                             };

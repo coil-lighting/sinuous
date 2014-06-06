@@ -50,7 +50,10 @@ mod world;
 
 
 fn main() {
-	println!("done.");
+    let s = std::mem::size_of::<ProfileNode>();
+	println!("{}", s);
+    println!("{}", std::mem::size_of::<Attribute>());
+    println!("{}", std::mem::size_of::<ProfileBranch>());
 }
 
 
