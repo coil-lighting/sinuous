@@ -35,7 +35,7 @@ pub struct DmxMap {
 /// port.
 pub struct DmxUniverse {
     pub id: u32,
-    pub name: ~str,
+    pub name: String,
     pub frame: [u8, ..512], // TODO: REF to Vec<u8>, "no box" says CM
 }
 

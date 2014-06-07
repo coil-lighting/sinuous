@@ -53,7 +53,7 @@ pub enum AttributeValue {
 
 
 pub struct Attribute {
-    name: String, // e.g. "iris"
+    pub name: String, // e.g. "iris"
 
 // IDEA: do away with dimensionality. make compound attributes just subtrees
 // of device space. then we can always unbundle, say, an xy effect into an x
@@ -61,10 +61,10 @@ pub struct Attribute {
 // also, it gives us the option to have heterogeneous topos and datatypes
 // within a compound attribute.
 
-    effect: (EffectType, EffectSubtype, EffectSubsubtype),
-    topo: &'static Topo,
-    default: Option<AttributeValue>, // required if rendering is implemented
-    dmx: Option<DmxMap>, // required if DMX rendering is implemented
+    pub effect: (EffectType, EffectSubtype, EffectSubsubtype),
+    pub topo: &'static Topo,
+    pub default: Option<AttributeValue>, // required if rendering is implemented
+    pub dmx: Option<DmxMap>, // required if DMX rendering is implemented
 }
 
 
@@ -80,17 +80,17 @@ pub struct Attribute {
 // attributes like a dimmer channel to complex, multidimensional, modal
 // attribute clusters such as mspeed-smoothed continuous litho wheel angle.
 pub struct Profile {
-    name: String,         // "Technobeam"
-    nickname: String,     // "Techno"
-    manufacturer: String, // "HES"
-    author: String,       // "e.g. Steve Jobs"
-    date: String,       // maybe we want to make this some kind of timestamp type
-    version: int,       // 1, 2, 3...
-    chan_alloc: ChannelAlloc, // what kinds of addresses do we need to allocate to patch one?
+    pub name: String,         // "Technobeam"
+    pub nickname: String,     // "Techno"
+    pub manufacturer: String, // "HES"
+    pub author: String,       // "e.g. Steve Jobs"
+    pub date: String,       // maybe we want to make this some kind of timestamp type
+    pub version: int,       // 1, 2, 3...
+    pub chan_alloc: ChannelAlloc, // what kinds of addresses do we need to allocate to patch one?
 
     // This can only be a ProfileBranch, as a Device only points to a DeviceBranch
     // No need to Box<> this, as the entire profile will be heap-allocated.
-    root: ProfileNode,
+    pub root: ProfileNode,
 }
 
 pub enum ChannelAlloc {
@@ -105,9 +105,9 @@ pub enum ProfileNode {
 }
 
 pub struct ProfileBranch {
-    name: String, // "Technobeam"
-    nickname: String, // "Techno"
-    children: Vec<ProfileNode>,
+    pub name: String, // "Technobeam"
+    pub nickname: String, // "Techno"
+    pub children: Vec<ProfileNode>,
 }
 
 pub enum Addr {
@@ -121,11 +121,11 @@ pub enum Addr {
 
 // Use case: many physical technobeams all addressed to channel 1
 pub struct DevicePatch {
-    addr: Addr,
+    pub addr: Addr,
 
     // A DevicePatch has multiple locations in case more than one physical
     // device with the same address, is managed by one logical DevicePatch.
-    locs: Vec<Loc>
+    pub locs: Vec<Loc>
 }
 
 impl DevicePatch {
@@ -161,8 +161,8 @@ impl DevicePatch {
 
 // TODO - optional custom labels for each node? currently just default to profile node labels
 pub struct DeviceBranch<'p> { // a DeviceBranch cannot outlive the profile it points to ('p)
-    profile_branch: &'p ProfileBranch,
-    children: Vec< DeviceNode<'p> >
+    pub profile_branch: &'p ProfileBranch,
+    pub children: Vec< DeviceNode<'p> >
 }
 
 impl<'p> DeviceBranch<'p> {
@@ -183,8 +183,8 @@ impl<'p> DeviceBranch<'p> {
 }
 
 pub struct DeviceEndpoint<'p> { // a DeviceEndpoint cannot outlive the profile it points to ('p)
-    attribute: &'p Attribute,
-    value: Option<AttributeValue>, // required if rendering is implemented for this attribute
+    pub attribute: &'p Attribute,
+    pub value: Option<AttributeValue>, // required if rendering is implemented for this attribute
 }
 
 impl<'p> DeviceEndpoint<'p> {
@@ -260,13 +260,13 @@ pub enum DeviceNode<'p> {
 }
 
 pub struct Device<'p, 'd> {
-    profile: &'p Profile,
-    name: String,
-    nickname: String, // shorter, to save space (defaults to name, truncated)
+    pub profile: &'p Profile,
+    pub name: String,
+    pub nickname: String, // shorter, to save space (defaults to name, truncated)
 
     // we probably want to define a type to contain this information to help ease
     // the job of the device patcher later
-    id: uint,
+    pub id: uint,
     // A Device has multiple addrs in case one logical device manages more than
     // one distinct device address. (See DevicePatch.locs for the case where
     // multiple physical devices all share the same address.)
@@ -274,8 +274,8 @@ pub struct Device<'p, 'd> {
     // we may consider using the optimized type SmallVector, optimized for cases when
     // the length is almost always 0 or 1
     // syntax::util::small_vector::SmallVector
-    patches: Vec<DevicePatch>,
-    root: &'d DeviceNode<'p>,
+    pub patches: Vec<DevicePatch>,
+    pub root: &'d mut DeviceNode<'p>,
 }
 
 impl<'p, 'd> Device<'p, 'd> {
@@ -381,7 +381,7 @@ pub fn patch<'p, 'd>(profile: &'p Profile, device_tree_root: &'d mut DeviceBranc
                 id: 0,
                 patches: vec!(DevicePatch::new_dmx_noloc(addr, len, univ)),
                 // unwrap() is safe here as we just pushed an element onto the vector so it cannot be empty.
-                root: device_tree_root.children.last().unwrap()
+                root: device_tree_root.children.mut_last().unwrap()
             };
 
             Some(d)
