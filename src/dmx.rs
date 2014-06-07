@@ -42,9 +42,9 @@ pub struct DmxUniverse {
 /// Situate a Device within a slice of a DmxUniverse. For example, say that a
 /// particular RGB color changer occupies channels 1-3.
 pub struct DmxAddr {
-    universe: Rc<RefCell<DmxUniverse>>,
-    address: uint, // TODO: statically constrain to 0..511 if possible in Rust
-    length: uint, // the number of byte-sized channels occuped by this Profile in a universe
+    pub universe: Rc<RefCell<DmxUniverse>>,
+    pub address: uint, // TODO: statically constrain to 0..511 if possible in Rust
+    pub length: uint, // the number of byte-sized channels occuped by this Profile in a universe
 }
 
 impl DmxAddr {

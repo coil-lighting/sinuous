@@ -2,6 +2,7 @@
 use dmx::DmxAddr;
 use dmx::DmxMap;
 use dmx::DmxAddressOffsetSingle;
+use dmx::DmxUniverse;
 use effect::EffectType;
 use effect::EffectSubtype;
 use effect::EffectSubsubtype;
@@ -16,8 +17,12 @@ use render::DmxSpinBipolar2ChWithRangeRenderer;
 use topo::Topo;
 use world::Loc;
 
+use std::cell::RefCell;
+use std::rc::Rc;
+
 // Named subtypes for the primitive storage representing the numeric value for
 // a Device Attribute's instance.
+#[deriving(Clone)]
 pub enum AttributeValue {
     Continuous(f64),
     Discrete(i64), // TODO - decide whether to make this unsigned instead
@@ -81,7 +86,15 @@ pub struct Profile {
     author: String,       // "e.g. Steve Jobs"
     date: String,       // maybe we want to make this some kind of timestamp type
     version: int,       // 1, 2, 3...
-    root: ProfileNode,  // No need to Box<> this, the profile owns its profile tree.
+    chan_alloc: ChannelAlloc, // what kinds of addresses do we need to allocate to patch one?
+
+    // This can only be a ProfileBranch, as a Device only points to a DeviceBranch
+    // No need to Box<> this, as the entire profile will be heap-allocated.
+    root: ProfileNode,
+}
+
+pub enum ChannelAlloc {
+    DmxSingleton(uint)
 }
 
 pub enum ProfileNode {
@@ -115,6 +128,22 @@ pub struct DevicePatch {
     locs: Vec<Loc>
 }
 
+impl DevicePatch {
+
+    // add a devicepatch to a given universe.  no checks yet on addressing conflicts.
+    // locs is empty.
+    pub fn new_dmx_noloc(addr: uint, len: uint, univ: Rc<RefCell<DmxUniverse>> ) -> DevicePatch {
+        DevicePatch{
+            addr: DmxAddrType(DmxAddr{
+                universe: univ,
+                address: addr,
+                length: len
+            }),
+            locs: Vec::new()
+        }
+    }
+}
+
 // There seem to be three layers of deviceness:
 //
 // 1) A 'physical' device, or rather a specific instance, i.e. one ani_mated model
@@ -133,7 +162,7 @@ pub struct DevicePatch {
 // TODO - optional custom labels for each node? currently just default to profile node labels
 pub struct DeviceBranch<'p> { // a DeviceBranch cannot outlive the profile it points to ('p)
     profile_branch: &'p ProfileBranch,
-    children: Vec<DeviceNode<'p>>
+    children: Vec< DeviceNode<'p> >
 }
 
 impl<'p> DeviceBranch<'p> {
@@ -230,7 +259,7 @@ pub enum DeviceNode<'p> {
     DeviceNodeEndpoint(DeviceEndpoint<'p>),
 }
 
-pub struct Device<'p> {
+pub struct Device<'p, 'd> {
     profile: &'p Profile,
     name: String,
     nickname: String, // shorter, to save space (defaults to name, truncated)
@@ -246,10 +275,10 @@ pub struct Device<'p> {
     // the length is almost always 0 or 1
     // syntax::util::small_vector::SmallVector
     patches: Vec<DevicePatch>,
-    root: DeviceNode<'p>,
+    root: &'d DeviceNode<'p>,
 }
 
-impl<'p> Device<'p> {
+impl<'p, 'd> Device<'p, 'd> {
     pub fn render(&mut self) {
         // Proposed: Assemble a list of slices, each a view on a universe's dmx
         // framebuffer, each slice aligned with the beginning of the device and
@@ -279,10 +308,14 @@ impl<'p> Device<'p> {
                         Some(mut u_ref) => {
                             let buffer = dmx_addr.slice_universe(&mut u_ref);
 
-                            match self.root {
+                            //self.root.render(buffer);
+                            // Device.root is now always a DeviceBranch
+
+                            match *self.root {
                                 DeviceNodeBranch(ref d) => d.render(buffer),
                                 DeviceNodeEndpoint(ref d) => d.render(buffer)
                             };
+
 
                         },
                         None => () // if something else is already writing to
@@ -305,4 +338,55 @@ impl<'p> Device<'p> {
             }
         }
     }
+}
+
+
+
+
+pub fn device_subtree_from_profile_subtree<'p>(root: &'p ProfileNode) -> DeviceNode<'p> {
+    match *root {
+        // if this is a profile branch, recurse over it
+        PBranch(ref pb) => {
+            DeviceNodeBranch(DeviceBranch{
+                profile_branch: pb,
+
+                // recurse over all of the children and collect into a vector
+                children: pb.children.iter().map(|pb_child| device_subtree_from_profile_subtree(pb_child)).collect()
+            })
+        },
+        // if this is a leaf, make and endpoint
+        Attr(ref attr) => {
+            DeviceNodeEndpoint(DeviceEndpoint{
+                attribute: attr,
+                // get the default value from the attribute to initialize
+                value: attr.default.clone()
+            })
+        }
+    }
+}
+
+
+// at the moment this only understands how to patch one contiguous section of a dmx universe
+pub fn patch<'p, 'd>(profile: &'p Profile, device_tree_root: &'d mut DeviceBranch<'p>, addr: uint, univ: Rc<RefCell<DmxUniverse>> ) -> Option<Device<'p, 'd>> {
+    match profile.chan_alloc {
+        DmxSingleton(len) => {
+
+            // build the corresponding DeviceNode for the root ProfileNode and put it in the tree
+            device_tree_root.children.push( device_subtree_from_profile_subtree(&'p profile.root) );
+
+            let d = Device {
+                profile: profile,
+                name: profile.name.clone(),
+                nickname: profile.nickname.clone(),
+                id: 0,
+                patches: vec!(DevicePatch::new_dmx_noloc(addr, len, univ)),
+                // unwrap() is safe here as we just pushed an element onto the vector so it cannot be empty.
+                root: device_tree_root.children.last().unwrap()
+            };
+
+            Some(d)
+        },
+        //_ => None
+    }
+
 }

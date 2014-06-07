@@ -19,3 +19,13 @@ pub struct Loc {
     position: Position,
     orientation: Orientation,
 }
+
+
+impl Loc{
+	pub fn new_zeros() -> Loc {
+		Loc{
+			position: Position{x:0. , y:0. , z:0.},
+			orientation: Orientation{pan: 0. , tilt:0. , roll:0.}
+		}
+	}
+}
