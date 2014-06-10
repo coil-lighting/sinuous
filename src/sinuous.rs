@@ -54,6 +54,7 @@ mod world;
 
 
 fn main() {
+    // TODOMB move to its own file
 
     let p = Profile{
         name: "Dimmer".to_string(),
@@ -86,15 +87,15 @@ fn main() {
 
     let mut dev_tree_root = DeviceBranch{
         profile_branch: &dummy_pbranch,
-        children: Vec::new()
+        children: Vec::new() // TODOMB defensive commas
     };
 
-    // construct our horrible universe monstrosity
+    // TODOMB import before using, make a factory method
     let univ = std::rc::Rc::new(std::cell::RefCell::new(DmxUniverse{id: 0, name: "U1".to_string(), frame: [0, ..512]}));
 
     let mut devs = Vec::new();
 
-    for i in range(0u,256u) {
+    for i in range(0u, 256u) {
         devs.push(patch(&p, &mut dev_tree_root, i, univ.clone()).unwrap());
     }
 
