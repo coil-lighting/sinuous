@@ -44,5 +44,5 @@ mod world;
 
 
 fn main() {
-    test_dimmer();
+    create_dimmer();
 }
