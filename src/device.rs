@@ -18,6 +18,7 @@ use topo::Topo;
 use world::Loc;
 
 use std::cell::RefCell;
+use std::cell::Cell;
 use std::rc::Rc;
 
 // Named subtypes for the primitive storage representing the numeric value for
@@ -162,14 +163,14 @@ impl DevicePatch {
 // TODO - optional custom labels for each node? currently just default to profile node labels
 pub struct DeviceBranch<'p> { // a DeviceBranch cannot outlive the profile it points to ('p)
     pub profile_branch: &'p ProfileBranch,
-    pub children: Vec< DeviceNode<'p> >
+    pub children: Vec< Rc<DeviceNode<'p>> >
 }
 
 impl<'p> DeviceBranch<'p> {
     pub fn render(&self, buffer: &mut[u8]) {
         // TODO verify that this operates by reference, not by copy!
         for child in self.children.iter() {
-            match *child {
+            match **child {
                 // Rust manual: "Patterns that bind variables default to binding
                 // to a copy or move of the matched value (depending on the
                 // matched value's type). This can be changed to bind to a
@@ -184,13 +185,31 @@ impl<'p> DeviceBranch<'p> {
 
 pub struct DeviceEndpoint<'p> { // a DeviceEndpoint cannot outlive the profile it points to ('p)
     pub attribute: &'p Attribute,
-    pub value: Option<AttributeValue>, // required if rendering is implemented for this attribute
+    pub value: Option<Cell<AttributeValue>>, // required if rendering is implemented for this attribute
 }
 
 impl<'p> DeviceEndpoint<'p> {
+
+    // TODO: check to make sure that the attribute value has the right type for
+    // the Attribute.
+    pub fn set_val(&self, val: AttributeValue) {
+        match self.value {
+            Some(ref v_cell) => v_cell.set(val),
+            None => ()
+        }
+    }
+
+    pub fn get_val(&self) -> Option<AttributeValue> {
+        match self.value {
+            Some(ref v_cell) => Some(v_cell.get()),
+            None => None
+        }
+    }
+
+
     pub fn render(&self, buffer: &mut[u8]) {
 
-        let n: AttributeValue = match self.value {
+        let n: AttributeValue = match self.get_val() {
             Some(v) => v,
             None => match self.attribute.default {
                 Some(d) => d,
@@ -275,7 +294,7 @@ pub struct Device<'p, 'd> {
     // the length is almost always 0 or 1
     // syntax::util::small_vector::SmallVector
     pub patches: Vec<DevicePatch>,
-    pub root: &'d mut DeviceNode<'p>,
+    pub root: Rc<DeviceNode<'p>>,
 }
 
 impl<'p, 'd> Device<'p, 'd> {
@@ -343,24 +362,27 @@ impl<'p, 'd> Device<'p, 'd> {
 
 
 
-pub fn device_subtree_from_profile_subtree<'p>(root: &'p ProfileNode) -> DeviceNode<'p> {
+pub fn device_subtree_from_profile_subtree<'p>(root: &'p ProfileNode) -> Rc<DeviceNode<'p>> {
     match *root {
         // if this is a profile branch, recurse over it
         PBranch(ref pb) => {
-            DeviceNodeBranch(DeviceBranch{
+            Rc::new(DeviceNodeBranch(DeviceBranch{
                 profile_branch: pb,
 
                 // recurse over all of the children and collect into a vector
                 children: pb.children.iter().map(|pb_child| device_subtree_from_profile_subtree(pb_child)).collect()
-            })
+            }))
         },
         // if this is a leaf, make and endpoint
         Attr(ref attr) => {
-            DeviceNodeEndpoint(DeviceEndpoint{
+            Rc::new(DeviceNodeEndpoint(DeviceEndpoint{
                 attribute: attr,
                 // get the default value from the attribute to initialize
-                value: attr.default.clone()
-            })
+                value: match attr.default {
+                    Some(v) => Some(Cell::new(v)),
+                    None => None
+                }
+            }))
         }
     }
 }
@@ -381,7 +403,7 @@ pub fn patch<'p, 'd>(profile: &'p Profile, device_tree_root: &'d mut DeviceBranc
                 id: 0,
                 patches: vec!(DevicePatch::new_dmx_noloc(addr, len, univ)),
                 // unwrap() is safe here as we just pushed an element onto the vector so it cannot be empty.
-                root: device_tree_root.children.mut_last().unwrap()
+                root: device_tree_root.children.last().unwrap().clone()
             };
 
             Some(d)

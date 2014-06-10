@@ -50,7 +50,7 @@ pub struct DmxAddr {
 impl DmxAddr {
 
     pub fn try_get_univ_ref<'a>(&'a self) -> Option<RefMut<'a, DmxUniverse>> {
-        self.universe.deref().try_borrow_mut()
+        self.universe.try_borrow_mut()
     }
 
     /// Extract the writable slice of the DMX universe that belongs to a
@@ -63,6 +63,6 @@ impl DmxAddr {
 
     pub fn slice_universe<'a>(&self, univ_ref: &'a mut RefMut<'a, DmxUniverse>) -> &'a mut [u8] {
 
-        univ_ref.deref_mut().frame.mut_slice(self.address, self.address + self.length)
+        univ_ref.frame.mut_slice(self.address, self.address + self.length)
     }
 }

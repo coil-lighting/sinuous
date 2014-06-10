@@ -93,22 +93,22 @@ fn main() {
 
     // now I've patched a device in the universe.  write a value to it and render!
     match *my_dimmer.root {
-        DeviceNodeEndpoint(ref mut e) => e.value = Some(Continuous(0.5)),
+        DeviceNodeEndpoint(ref e) => e.set_val(Continuous(0.5)),
         _ => ()
     }
 
     my_dimmer.render();
 
-    println!("{:?}", univ.deref().borrow().deref().frame);
+    println!("{:?}", univ.borrow().frame);
 
     match *my_dimmer.root {
-        DeviceNodeEndpoint(ref mut e) => e.value = Some(Continuous(0.1)),
+        DeviceNodeEndpoint(ref e) => e.set_val(Continuous(0.5)),
         _ => ()
     }
 
     my_dimmer.render();
 
-    println!("{:?}", univ.deref().borrow().deref().frame);
+    println!("{:?}", univ.borrow().frame);
 
     // sadly, patching another device of course fails because we already have a mutable pointer to the root of the device tree.
     /*
