@@ -102,7 +102,7 @@ fn main() {
     println!("{:?}", univ.borrow().frame);
 
     match *my_dimmer.root {
-        DeviceNodeEndpoint(ref e) => e.set_val(Continuous(0.5)),
+        DeviceNodeEndpoint(ref e) => e.set_val(Continuous(0.1)),
         _ => ()
     }
 
