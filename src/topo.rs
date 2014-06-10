@@ -184,7 +184,7 @@ pub static continuous_ring_bipolar: Topo = Topo {
 /// Placeholder for integer blender methods that require more research before
 /// we decide how to implement them. (For example, we're not sure how to
 /// define multiply mode for discrete values.) Let's just clobber for now.
-fn iblend_TODO(a: i64, _b: i64) -> i64 {
+fn iblend_todo(a: i64, _b: i64) -> i64 {
     a
 }
 
@@ -206,7 +206,7 @@ pub static discrete_ring: Topo = Topo {
         subtract: iblend_ring_subtract,
         add_modulus: iblend_ring_add,
         subtract_modulus: iblend_ring_subtract,
-        multiply: iblend_TODO,
+        multiply: iblend_todo,
         abs_max: iblend_euclid_max, // or _abs_max if we don't want to restrict range >= 0
         abs_min: iblend_euclid_min, // ditto
     })
@@ -229,7 +229,7 @@ pub static discrete_array: Topo = Topo {
         subtract: iblend_euclid_subtract,
         add_modulus: iblend_euclid_add,
         subtract_modulus: iblend_euclid_subtract,
-        multiply: iblend_TODO,
+        multiply: iblend_todo,
         abs_max: iblend_euclid_max, // or _abs_max if we don't want to restrict range >= 0
         abs_min: iblend_euclid_min, // ditto
     })
@@ -256,7 +256,7 @@ pub static discrete_set: Topo = Topo {
         subtract: iblend_euclid_subtract,
         add_modulus: iblend_euclid_add,
         subtract_modulus: iblend_euclid_subtract,
-        multiply: iblend_TODO,
+        multiply: iblend_todo,
         abs_max: iblend_euclid_max, // or _abs_max if we don't want to restrict range >= 0
         abs_min: iblend_euclid_min, // ditto
     })
