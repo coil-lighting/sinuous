@@ -131,9 +131,10 @@ pub struct DevicePatch {
 
 impl DevicePatch {
 
-    // add a devicepatch to a given universe.  no checks yet on addressing conflicts.
-    // locs is empty.
-    pub fn new_dmx_noloc(addr: uint, len: uint, univ: Rc<RefCell<DmxUniverse>> ) -> DevicePatch {
+    /// Make a new patch in the given universe. Do not (yet) check for
+    /// conflicting patches. (TODO: *optionally* check for conflicts.) 
+    /// The returned patch has no associated Locs.
+    pub fn new_dmx(addr: uint, len: uint, univ: Rc<RefCell<DmxUniverse>> ) -> DevicePatch {
         DevicePatch{
             addr: DmxAddrType(DmxAddr{
                 universe: univ,
@@ -394,7 +395,7 @@ pub fn patch<'p>(profile: &'p Profile, device_tree_root: &mut DeviceBranch<'p>, 
                 name: profile.name.clone(),
                 nickname: profile.nickname.clone(),
                 id: 0,
-                patches: vec!(DevicePatch::new_dmx_noloc(addr, len, univ)),
+                patches: vec!(DevicePatch::new_dmx(addr, len, univ)),
                 // unwrap() is safe here as we just pushed an element onto the vector so it cannot be empty.
                 root: device_tree_root.children.last().unwrap().clone()
             };
