@@ -27,6 +27,9 @@
 // It compiles under the most recent 0.11-pre.
 
 extern crate debug;
+extern crate time;
+
+use time::*;
 
 use blend::*;
 use device::*;
@@ -89,56 +92,40 @@ fn main() {
     // construct our horrible universe monstrosity
     let univ = std::rc::Rc::new(std::cell::RefCell::new(DmxUniverse{id: 0, name: "U1".to_string(), frame: [0, ..512]}));
 
-    let mut my_dimmer = patch(&p, &mut dev_tree_root, 0, univ.clone()).unwrap();
+    let mut devs = Vec::new();
 
-    // now I've patched a device in the universe.  write a value to it and render!
-    match *my_dimmer.root {
-        DeviceNodeEndpoint(ref e) => e.set_val(Continuous(0.5)),
-        _ => ()
+    for i in range(0u,256u) {
+        devs.push(patch(&p, &mut dev_tree_root, i, univ.clone()).unwrap());
     }
-    my_dimmer.render();
 
-    println!("{:?}", univ.borrow().frame);
-
-    match *my_dimmer.root {
-        DeviceNodeEndpoint(ref e) => e.set_val(Continuous(0.1)),
-        _ => ()
+    fn write_dimmer_val(dim: &Device, v: f64) {
+        match *dim.root {
+            DeviceNodeEndpoint(ref e) => e.set_val(Continuous(v)),
+            _ => ()
+        }
     }
-    my_dimmer.render();
 
-    println!("{:?}", univ.borrow().frame);
+    let (mut t0, mut t1): (f64, f64);
 
-    // sadly, patching another device of course fails because we already have a mutable pointer to the root of the device tree.
+    let mut tot = 0f64;
 
-    let mut my_dimmer_2 = patch(&p, &mut dev_tree_root, 1, univ.clone()).unwrap();
+    let n_trial = 10000;
 
-    match *my_dimmer.root {
-        DeviceNodeEndpoint(ref e) => e.set_val(Continuous(0.05)),
-        _ => ()
+    for n in range(0,n_trial) {
+        let v = (n as f64)/9999f64;
+
+        t0 = precise_time_s();
+        for d in devs.mut_iter() {
+            write_dimmer_val(d,v);
+            d.render();
+        }
+        t1 = precise_time_s();
+
+        tot += t1 - t0;
+
+        //println!("{:?}", univ.borrow().frame);
     }
-    my_dimmer.render();
 
-    match *my_dimmer_2.root {
-        DeviceNodeEndpoint(ref e) => e.set_val(Continuous(0.2)),
-        _ => ()
-    }
-    my_dimmer_2.render();
-
-    println!("{:?}", univ.borrow().frame);
-
-
-    match *my_dimmer.root {
-        DeviceNodeEndpoint(ref e) => e.set_val(Continuous(0.3)),
-        _ => ()
-    }
-    my_dimmer.render();
-
-    match *my_dimmer_2.root {
-        DeviceNodeEndpoint(ref e) => e.set_val(Continuous(1.0)),
-        _ => ()
-    }
-    my_dimmer_2.render();
-
-    println!("{:?}", univ.borrow().frame);
+    println!("Average time: {} ms", (1000f64 * tot) / (n_trial as f64));
 
 }
