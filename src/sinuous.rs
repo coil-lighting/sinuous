@@ -96,7 +96,6 @@ fn main() {
         DeviceNodeEndpoint(ref e) => e.set_val(Continuous(0.5)),
         _ => ()
     }
-
     my_dimmer.render();
 
     println!("{:?}", univ.borrow().frame);
@@ -105,7 +104,6 @@ fn main() {
         DeviceNodeEndpoint(ref e) => e.set_val(Continuous(0.1)),
         _ => ()
     }
-
     my_dimmer.render();
 
     println!("{:?}", univ.borrow().frame);
@@ -114,20 +112,31 @@ fn main() {
 
     let mut my_dimmer_2 = patch(&p, &mut dev_tree_root, 1, univ.clone()).unwrap();
 
+    match *my_dimmer.root {
+        DeviceNodeEndpoint(ref e) => e.set_val(Continuous(0.05)),
+        _ => ()
+    }
+    my_dimmer.render();
+
     match *my_dimmer_2.root {
         DeviceNodeEndpoint(ref e) => e.set_val(Continuous(0.2)),
         _ => ()
     }
-
     my_dimmer_2.render();
 
     println!("{:?}", univ.borrow().frame);
+
+
+    match *my_dimmer.root {
+        DeviceNodeEndpoint(ref e) => e.set_val(Continuous(0.3)),
+        _ => ()
+    }
+    my_dimmer.render();
 
     match *my_dimmer_2.root {
         DeviceNodeEndpoint(ref e) => e.set_val(Continuous(1.0)),
         _ => ()
     }
-
     my_dimmer_2.render();
 
     println!("{:?}", univ.borrow().frame);

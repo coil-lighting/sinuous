@@ -185,26 +185,22 @@ impl<'p> DeviceBranch<'p> {
 
 pub struct DeviceEndpoint<'p> { // a DeviceEndpoint cannot outlive the profile it points to ('p)
     pub attribute: &'p Attribute,
-    pub value: Option<Cell<AttributeValue>>, // required if rendering is implemented for this attribute
+    pub value: Cell<Option<AttributeValue>>, // required if rendering is implemented for this attribute
 }
 
 impl<'p> DeviceEndpoint<'p> {
 
+    pub fn get_val(&self) -> Option<AttributeValue> {
+        self.value.get()
+    }
+
     // TODO: check to make sure that the attribute value has the right type for
     // the Attribute.
     pub fn set_val(&self, val: AttributeValue) {
-        match self.value {
-            Some(ref v_cell) => v_cell.set(val),
-            None => ()
-        }
+        self.value.set(Some(val))
     }
 
-    pub fn get_val(&self) -> Option<AttributeValue> {
-        match self.value {
-            Some(ref v_cell) => Some(v_cell.get()),
-            None => None
-        }
-    }
+
 
 
     pub fn render(&self, buffer: &mut[u8]) {
@@ -378,10 +374,7 @@ pub fn device_subtree_from_profile_subtree<'p>(root: &'p ProfileNode) -> Rc<Devi
             Rc::new(DeviceNodeEndpoint(DeviceEndpoint{
                 attribute: attr,
                 // get the default value from the attribute to initialize
-                value: match attr.default {
-                    Some(v) => Some(Cell::new(v)),
-                    None => None
-                }
+                value: Cell::new(attr.default)
             }))
         }
     }
