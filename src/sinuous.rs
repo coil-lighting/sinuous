@@ -31,15 +31,11 @@ extern crate time;
 
 use time::*;
 
-use blend::*;
 use device::*;
 use dmx::*;
 use effect::*;
-use numeric::*;
-use range::*;
 use render::*;
 use topo::*;
-use world::*;
 
 
 mod blend;
