@@ -100,7 +100,7 @@ pub fn limit_unipolar_unit_f64(n: f64) -> f64 {
 /// evenly into the byte range [0..255]. Clamp out-of-range input.
 pub fn limit_unipolar_unit_f64_to_u8(n: f64) -> u8 {
     if n >= 1.0 {
-        1
+        255
     } else if n <= 0.0 {
         0
     } else {
