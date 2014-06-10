@@ -278,7 +278,7 @@ pub enum DeviceNode<'p> {
     DeviceNodeEndpoint(DeviceEndpoint<'p>),
 }
 
-pub struct Device<'p, 'd> {
+pub struct Device<'p> {
     pub profile: &'p Profile,
     pub name: String,
     pub nickname: String, // shorter, to save space (defaults to name, truncated)
@@ -297,7 +297,7 @@ pub struct Device<'p, 'd> {
     pub root: Rc<DeviceNode<'p>>,
 }
 
-impl<'p, 'd> Device<'p, 'd> {
+impl<'p> Device<'p> {
     pub fn render(&mut self) {
         // Proposed: Assemble a list of slices, each a view on a universe's dmx
         // framebuffer, each slice aligned with the beginning of the device and
@@ -389,7 +389,7 @@ pub fn device_subtree_from_profile_subtree<'p>(root: &'p ProfileNode) -> Rc<Devi
 
 
 // at the moment this only understands how to patch one contiguous section of a dmx universe
-pub fn patch<'p, 'd>(profile: &'p Profile, device_tree_root: &'d mut DeviceBranch<'p>, addr: uint, univ: Rc<RefCell<DmxUniverse>> ) -> Option<Device<'p, 'd>> {
+pub fn patch<'p>(profile: &'p Profile, device_tree_root: &mut DeviceBranch<'p>, addr: uint, univ: Rc<RefCell<DmxUniverse>> ) -> Option<Device<'p>> {
     match profile.chan_alloc {
         DmxSingleton(len) => {
 

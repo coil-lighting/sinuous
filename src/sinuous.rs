@@ -111,7 +111,25 @@ fn main() {
     println!("{:?}", univ.borrow().frame);
 
     // sadly, patching another device of course fails because we already have a mutable pointer to the root of the device tree.
-    /*
-    let mut my_dimmer = patch(&p, &mut dev_tree_root, 1, univ.clone()).unwrap();
-    */
+
+    let mut my_dimmer_2 = patch(&p, &mut dev_tree_root, 1, univ.clone()).unwrap();
+
+    match *my_dimmer_2.root {
+        DeviceNodeEndpoint(ref e) => e.set_val(Continuous(0.2)),
+        _ => ()
+    }
+
+    my_dimmer_2.render();
+
+    println!("{:?}", univ.borrow().frame);
+
+    match *my_dimmer_2.root {
+        DeviceNodeEndpoint(ref e) => e.set_val(Continuous(1.0)),
+        _ => ()
+    }
+
+    my_dimmer_2.render();
+
+    println!("{:?}", univ.borrow().frame);
+
 }
