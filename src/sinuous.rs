@@ -35,6 +35,7 @@ mod blend;
 mod device;
 mod dmx;
 mod effect;
+mod mixer;
 mod numeric;
 mod range;
 mod render;

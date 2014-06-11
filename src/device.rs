@@ -165,6 +165,9 @@ impl DeviceBranch {
     }
 }
 
+// TODO DeviceSwitch: like DeviceBranch, but only traverses one of its children during render()
+
+
 pub struct DeviceEndpoint {
     /// We really wanted Rc<Attribute> but haven't gotten the compiler to accept
     /// that Rc<Attribute> is just a special case of Rc<ProfileGraph>:
