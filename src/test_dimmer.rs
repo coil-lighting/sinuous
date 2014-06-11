@@ -46,18 +46,18 @@ pub fn create_dimmer() {
     };
 
     // TODO: factory method or constructor associated with DmxUniverse
-    let univ = Rc::new(RefCell::new(DmxUniverse {
+    let mut univ = box DmxUniverse {
         id: 0,
         name: "U1".to_string(),
         frame: [0, ..512]
-    }));
+    };
 
     let mut devices = Vec::new();
 
     // Patch 256 dimmers
     let device_ct: uint = 512;
     for i in range(0u, device_ct) {
-        devices.push(patch(&p, &mut dev_tree_root, i, univ.clone()).unwrap());
+        devices.push(patch(&p, &mut dev_tree_root, i, &mut *univ).unwrap());
     }
 
     fn write_dimmer_val(dim: &Device, v: f64) {
@@ -84,7 +84,7 @@ pub fn create_dimmer() {
 
             // This assertion adds about +25% to the runtime of this test:
             // TODO: fn, method or macro to deboilerplatify these contortions:
-            let rendered_val = univ.deref().borrow().frame[i];
+            let rendered_val = univ.frame[i];
             assert!(rendered_val == limit_unipolar_unit_f64_to_u8(v));
             i = i + 1;
         }

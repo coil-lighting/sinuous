@@ -42,17 +42,18 @@ pub struct DmxUniverse {
 /// Situate a Device within a slice of a DmxUniverse. For example, say that a
 /// particular RGB color changer occupies channels 1-3.
 pub struct DmxAddr {
-    pub universe: Rc<RefCell<DmxUniverse>>,
+    pub universe: *mut DmxUniverse,
     pub address: uint, // TODO: statically constrain to 0..511 if possible in Rust
     pub length: uint, // the number of byte-sized channels occuped by this Profile in a universe
 }
 
 impl DmxAddr {
 
+    /*
     pub fn try_get_univ_ref<'a>(&'a self) -> Option<RefMut<'a, DmxUniverse>> {
         self.universe.try_borrow_mut()
     }
-
+    */
     /// Extract the writable slice of the DMX universe that belongs to a
     /// particular Device. This prevents a Device from erroneously overwriting
     /// portions of the framebuffer that do not belong to it. Note that we
@@ -61,8 +62,8 @@ impl DmxAddr {
     /// unconventional, it may prove necessary in some experimental contexts.
     /// A higher control layer should warn the user about conflicts/overlaps.
 
-    pub fn slice_universe<'a>(&self, univ_ref: &'a mut RefMut<'a, DmxUniverse>) -> &'a mut [u8] {
+    pub unsafe fn slice_universe<'a>(&self) -> &'a mut [u8] {
 
-        univ_ref.frame.mut_slice(self.address, self.address + self.length)
+        (*(self.universe)).frame.mut_slice(self.address, self.address + self.length)
     }
 }

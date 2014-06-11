@@ -108,7 +108,7 @@ impl DevicePatch {
     /// Make a new patch in the given universe. Do not (yet) check for
     /// conflicting patches. (TODO: *optionally* check for conflicts.)
     /// The returned patch has no associated Locs.
-    pub fn new_dmx(addr: uint, len: uint, univ: Rc<RefCell<DmxUniverse>> ) -> DevicePatch {
+    pub fn new_dmx(addr: uint, len: uint, univ: *mut DmxUniverse ) -> DevicePatch {
         DevicePatch{
             addr: DmxAddrType(DmxAddr{
                 universe: univ,
@@ -314,28 +314,16 @@ impl<'p> Device<'p> {
             match patch.addr {
                 DmxAddrType(ref mut dmx_addr) => {
 
-                    // Why this extra song and dance around the universe reference?
-                    // The Universe is wrapped in a RefCell, so we need to try to
-                    // get a mutable reference to the contents, which could fail.
-                    // Also, the RefMut that is returned determines the lifetime of
-                    // the &mut we get from it, so we need to hold it in this scope.
-                    match dmx_addr.try_get_univ_ref() {
-                        Some(mut u_ref) => {
-                            let buffer = dmx_addr.slice_universe(&mut u_ref);
+                    let buffer = unsafe{ dmx_addr.slice_universe() };
 
-                            unsafe{ match *self.root {
-                                DeviceTreeBranch(ref d) => d.render(buffer),
-                                DeviceTreeEndpoint(ref d) => d.render(buffer)
-                            };}
-
-
-                        },
-                        None => () // if something else is already writing to
-                        // the universe buffer, we can't get access.  give up.
+                    unsafe{
+                    match *self.root {
+                        DeviceTreeBranch(ref d) => d.render(buffer),
+                        DeviceTreeEndpoint(ref d) => d.render(buffer)
+                    };
                     }
-                    /*
-                    let (buffer, univ_ref)  = dmx_addr.slice_universe();
-
+                }
+                /*
                     // TODO do not render redundantly if patched more than once (with the same protocol)?
                     // TODO? track most recent profile slice as we descend the tree
                     // FUTURE think about how subprofiles might come in handy (where a
@@ -346,7 +334,6 @@ impl<'p> Device<'p> {
                         DeviceTreeEndpoint(ref d) => d.render(buffer)
                     };
                     */
-                }
             }
         }
     }
@@ -376,7 +363,7 @@ pub fn device_subtree_from_profile_subtree<'p>(root: &'p ProfileGraph) -> Box<De
 }
 
 // at the moment this only understands how to patch one contiguous section of a dmx universe
-pub fn patch<'p>(profile: &'p Profile, device_tree_root: &mut DeviceBranch<'p>, addr: uint, univ: Rc<RefCell<DmxUniverse>> ) -> Option<Device<'p>> {
+pub fn patch<'p>(profile: &'p Profile, device_tree_root: &mut DeviceBranch<'p>, addr: uint, univ: *mut DmxUniverse ) -> Option<Device<'p>> {
     match profile.chan_alloc {
         DmxChannelCount(len) => {
 
