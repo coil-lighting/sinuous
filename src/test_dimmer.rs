@@ -26,8 +26,9 @@ pub fn create_dimmer() {
         date: "June 7, 2014".to_string(),
         version: 0,
         chan_alloc: DmxSingleton(1),
-        root: Attr(Attribute {
+        root: Rc::new(Attr(Attribute {
             name: "Dimmer".to_string(),
+            nickname: "Dim".to_string(),
             effect: (Dimmer, ColorspaceI, Value),
             topo: &'static continuous_euclidian_unipolar,
             default: Some(Continuous(0.)),
@@ -35,20 +36,17 @@ pub fn create_dimmer() {
                 offset: DmxAddressOffsetSingle(0),
                 renderer: DmxFloatRenderer(render_dmx_float_unipolar)
             })
-        })
+        }))
     };
 
-    // every device branch must refer to a profile branch.  this doesn't make sense
-    // for the root of the device tree.  might want to consider special-casing this,
-    // or it may just not matter.
-    let dummy_pbranch = ProfileBranch{
+    let root_profile_branch = Rc::new(PBranch(ProfileBranch {
         name: "Device tree root".to_string(),
         nickname: "DevTrRt".to_string(),
         children: Vec::new(),
-    };
+    }));
 
     let mut dev_tree_root = DeviceBranch{
-        profile_branch: &dummy_pbranch,
+        profile_branch: root_profile_branch.clone(),
         children: Vec::new(),
     };
 

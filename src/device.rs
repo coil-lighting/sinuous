@@ -1,4 +1,15 @@
 //! Models describing device profiles and concrete devices (as trees).
+
+// I experimentally eliminated dimensionality in order to simplify device
+// modeling. A (sub)Profile/sub(Device)'s dimensionality is just the
+// number of its children. This allows us to break down an xy cartesian
+// coordinate into separate x and y effects; we'll just have to decide
+// how to indicate that we want to blend in higher dimensions, i.e. blend
+// the xy branch, not x and y separately, for blend modes where x and y
+// are independent. This might be tricky, but it's no trickier than trying
+// to work around the atomicity of an xy 2D attribute for cases where I
+// really just want to deal with x. - MB
+
 use dmx::DmxAddr;
 use dmx::DmxMap;
 use dmx::DmxAddressOffsetSingle;
@@ -29,51 +40,14 @@ pub enum AttributeValue {
     Discrete(i64), // TODO - decide whether to make this unsigned instead
 }
 
-
-// I experimentally eliminated dimensionality in order to simplify device
-// modeling. A (sub)Profile/sub(Device)'s dimensionality is just the
-// number of its children. This allows us to break down an xy cartesian
-// coordinate into separate x and y effects; we'll just have to decide
-// how to indicate that we want to blend in higher dimensions, i.e. blend
-// the xy branch, not x and y separately, for blend modes where x and y
-// are independent. This might be tricky, but it's no trickier than trying
-// to work around the atomicity of an xy 2D attribute for cases where I
-// really just want to deal with x. - MB
-
-// notes from rb about labeling indexed ranges:
-    // TODO - ONLY IF THIS ATTRIBUTE NEEDS LABELED INDICES
-    //     @indexTable=nil // if required, a tuple of strings, one per mode, in order
-// ...but shouldn't index labels be in with the range struct?
-
-// Here's another idea from ruby. It's no longer clear how this logic will
-// pan out. Maybe we'll need to resurrect this idea because modal logic can
-// be arbitrarily complex on board the device, but hopefully we can express
-// modes through the layout of the device tree instead:
-    // ONLY IF THIS ATTRIBUTE GOVERNS A MODAL CLUSTER
-    //     @clusterMethod=nil
-
-
 pub struct Attribute {
-    pub name: String, // e.g. "iris"
-
-// IDEA: do away with dimensionality. make compound attributes just subtrees
-// of device space. then we can always unbundle, say, an xy effect into an x
-// and a y without having to write a separate model branch in the profile.
-// also, it gives us the option to have heterogeneous topos and datatypes
-// within a compound attribute.
-
+    pub name: String, // e.g. "Gobo wheel 1 position"
+    pub nickname: String, // e.g. "Gobo1"
     pub effect: (EffectType, EffectSubtype, EffectSubsubtype),
     pub topo: &'static Topo,
     pub default: Option<AttributeValue>, // required if rendering is implemented
     pub dmx: Option<DmxMap>, // required if DMX rendering is implemented
 }
-
-
-// Leftover AttributeTypes from the old DMX renderers, now refactored:
-    // // name                     *dmx* renderer (old Ruby style map)
-    // ModalParent          ,// => LrenderDMXModalParent,
-    // IndexVirtual         ,// => LrenderDMXVirtual,
-    // Cluster              ,// => LrenderDMXCluster,
 
 
 // Hypothesis: devices' descriptions are trees of ProfileElements, and this will
@@ -89,9 +63,7 @@ pub struct Profile {
     pub version: int,       // 1, 2, 3...
     pub chan_alloc: ChannelAlloc, // what kinds of addresses do we need to allocate to patch one?
 
-    // This can only be a ProfileBranch, as a Device only points to a DeviceBranch
-    // No need to Box<> this, as the entire profile will be heap-allocated.
-    pub root: ProfileNode,
+    pub root: Rc<ProfileNode>,
 }
 
 pub enum ChannelAlloc {
@@ -99,8 +71,6 @@ pub enum ChannelAlloc {
 }
 
 pub enum ProfileNode {
-// TODO: REF PBranch and Attr into struct variants ... maybe only if we can prove the
-// functions will be the same for both? we'll have to experiment.
     PBranch(ProfileBranch), // branch node
     Attr(Attribute), // leaf node
 }
@@ -108,7 +78,7 @@ pub enum ProfileNode {
 pub struct ProfileBranch {
     pub name: String, // "Technobeam"
     pub nickname: String, // "Techno"
-    pub children: Vec<ProfileNode>,
+    pub children: Vec<Rc<ProfileNode>>,
 }
 
 pub enum Addr {
@@ -132,7 +102,7 @@ pub struct DevicePatch {
 impl DevicePatch {
 
     /// Make a new patch in the given universe. Do not (yet) check for
-    /// conflicting patches. (TODO: *optionally* check for conflicts.) 
+    /// conflicting patches. (TODO: *optionally* check for conflicts.)
     /// The returned patch has no associated Locs.
     pub fn new_dmx(addr: uint, len: uint, univ: Rc<RefCell<DmxUniverse>> ) -> DevicePatch {
         DevicePatch{
@@ -162,12 +132,12 @@ impl DevicePatch {
 // 3) A logical device which is part of the scenegraph. Maybe 'SceneDevice'?
 
 // TODO - optional custom labels for each node? currently just default to profile node labels
-pub struct DeviceBranch<'p> { // a DeviceBranch cannot outlive the profile it points to ('p)
-    pub profile_branch: &'p ProfileBranch,
-    pub children: Vec< Rc<DeviceNode<'p>> >
+pub struct DeviceBranch { // a DeviceBranch cannot outlive the profile it points to ('p)
+    pub profile_branch: Rc<ProfileNode>, // We actually want Rc<ProfileBranch>, but haven't gotten the compiler to accept that it's a special case of Rc<ProfileNode>
+    pub children: Vec<Rc<DeviceNode>>,
 }
 
-impl<'p> DeviceBranch<'p> {
+impl DeviceBranch {
     pub fn render(&self, buffer: &mut[u8]) {
         // TODO verify that this operates by reference, not by copy!
         for child in self.children.iter() {
@@ -184,12 +154,12 @@ impl<'p> DeviceBranch<'p> {
     }
 }
 
-pub struct DeviceEndpoint<'p> { // a DeviceEndpoint cannot outlive the profile it points to ('p)
-    pub attribute: &'p Attribute,
+pub struct DeviceEndpoint { // a DeviceEndpoint cannot outlive the profile it points to ('p)
+    pub attribute: Rc<ProfileNode>, // We actually want Rc<Attribute>, but haven't gotten the compiler to accept that it's a special case of Rc<ProfileNode>
     pub value: Cell<Option<AttributeValue>>, // required if rendering is implemented for this attribute
 }
 
-impl<'p> DeviceEndpoint<'p> {
+impl DeviceEndpoint {
 
     pub fn get_val(&self) -> Option<AttributeValue> {
         self.value.get()
@@ -201,23 +171,31 @@ impl<'p> DeviceEndpoint<'p> {
         self.value.set(Some(val))
     }
 
+    pub fn get_attribute<'a>(&'a self) -> &'a Attribute {
+        match *self.attribute {
+            Attr(ref a) => a,
+            _ => fail!("Every DeviceEndpoint must be bound to an Attr(Attribute), not a PBranch(ProfileBranch) ProfileNode."),
+        }
+    }
 
-
-
+    /// Fail if you have corrupted the device tree by linking an endpoint to
+    /// a non-Attribute ProfileBranch.
     pub fn render(&self, buffer: &mut[u8]) {
+        let attribute = self.get_attribute();
 
+        // Either return my value, or return default if no value.
         let n: AttributeValue = match self.get_val() {
             Some(v) => v,
-            None => match self.attribute.default {
+            None => match attribute.default {
                 Some(d) => d,
-                None => fail!("Every attribute which supports rendering must supply a default value.")
+                None => fail!("Every attribute which supports rendering must supply a default value."),
             }
         };
 
         // TODO: also make sure this doesn't copy anything by value
-        let dmx: &DmxMap = match self.attribute.dmx {
+        let dmx: &DmxMap = match attribute.dmx {
             Some(ref x) => x,
-            None => fail!("Every attribute which supports rendering must supply a DmxMap (for now).")
+            None => fail!("Every attribute which supports rendering must supply a DmxMap (for now)."),
         };
 
         let offset: uint = match dmx.offset {
@@ -270,15 +248,15 @@ impl<'p> DeviceEndpoint<'p> {
 // Profile tree.
 // CSM: we probably want to replace these essentially placeholder types by
 // declaring DeviceBranch and DeviceEndpoint as struct variants of DeviceNode.
-pub enum DeviceNode<'p> {
-    DeviceNodeBranch(DeviceBranch<'p>),
-    DeviceNodeEndpoint(DeviceEndpoint<'p>),
+pub enum DeviceNode {
+    DeviceNodeBranch(DeviceBranch),
+    DeviceNodeEndpoint(DeviceEndpoint),
 }
 
 pub struct Device<'p> {
-    pub profile: &'p Profile,
+    pub profile: &'p Profile, // multiple similar devices hold an immutable reference to each Profile
     pub name: String,
-    pub nickname: String, // shorter, to save space (defaults to name, truncated)
+    pub nickname: String, // shorter, to save space on screen (defaults to name, truncated)
 
     // we probably want to define a type to contain this information to help ease
     // the job of the device patcher later
@@ -291,7 +269,7 @@ pub struct Device<'p> {
     // the length is almost always 0 or 1
     // syntax::util::small_vector::SmallVector
     pub patches: Vec<DevicePatch>,
-    pub root: Rc<DeviceNode<'p>>,
+    pub root: Rc<DeviceNode>,
 }
 
 impl<'p> Device<'p> {
@@ -356,24 +334,21 @@ impl<'p> Device<'p> {
     }
 }
 
-
-
-
-pub fn device_subtree_from_profile_subtree<'p>(root: &'p ProfileNode) -> Rc<DeviceNode<'p>> {
-    match *root {
+pub fn device_subtree_from_profile_subtree(root: &Rc<ProfileNode>) -> Rc<DeviceNode> {
+    match **root { // Rc implements the trait deref, so the * operator works.
         // if this is a profile branch, recurse over it
         PBranch(ref pb) => {
-            Rc::new(DeviceNodeBranch(DeviceBranch{
-                profile_branch: pb,
+            Rc::new(DeviceNodeBranch(DeviceBranch {
+                profile_branch: root.clone(),
 
                 // recurse over all of the children and collect into a vector
                 children: pb.children.iter().map(|pb_child| device_subtree_from_profile_subtree(pb_child)).collect()
             }))
         },
-        // if this is a leaf, make and endpoint
+        // If this is a leaf, make a corresponding endpoint.
         Attr(ref attr) => {
             Rc::new(DeviceNodeEndpoint(DeviceEndpoint{
-                attribute: attr,
+                attribute: root.clone(),
                 // get the default value from the attribute to initialize
                 value: Cell::new(attr.default)
             }))
@@ -381,9 +356,8 @@ pub fn device_subtree_from_profile_subtree<'p>(root: &'p ProfileNode) -> Rc<Devi
     }
 }
 
-
 // at the moment this only understands how to patch one contiguous section of a dmx universe
-pub fn patch<'p>(profile: &'p Profile, device_tree_root: &mut DeviceBranch<'p>, addr: uint, univ: Rc<RefCell<DmxUniverse>> ) -> Option<Device<'p>> {
+pub fn patch<'p>(profile: &'p Profile, device_tree_root: &mut DeviceBranch, addr: uint, univ: Rc<RefCell<DmxUniverse>> ) -> Option<Device<'p>> {
     match profile.chan_alloc {
         DmxSingleton(len) => {
 
