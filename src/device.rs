@@ -66,8 +66,10 @@ pub struct Profile {
     pub root: Rc<ProfileNode>,
 }
 
+/// We will gradually expand the ways we can allocate channels, potentially
+/// across multiple universes and even protocols.
 pub enum ChannelAlloc {
-    DmxSingleton(uint)
+    DmxChannelCount(uint),
 }
 
 pub enum ProfileNode {
@@ -359,7 +361,7 @@ pub fn device_subtree_from_profile_subtree(root: &Rc<ProfileNode>) -> Rc<DeviceN
 // at the moment this only understands how to patch one contiguous section of a dmx universe
 pub fn patch<'p>(profile: &'p Profile, device_tree_root: &mut DeviceBranch, addr: uint, univ: Rc<RefCell<DmxUniverse>> ) -> Option<Device<'p>> {
     match profile.chan_alloc {
-        DmxSingleton(len) => {
+        DmxChannelCount(len) => {
 
             // build the corresponding DeviceNode for the root ProfileNode and put it in the tree
             device_tree_root.children.push( device_subtree_from_profile_subtree(&'p profile.root) );

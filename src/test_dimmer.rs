@@ -25,7 +25,7 @@ pub fn create_dimmer() {
         author: "Chris Macklin".to_string(),
         date: "June 7, 2014".to_string(),
         version: 0,
-        chan_alloc: DmxSingleton(1),
+        chan_alloc: DmxChannelCount(1),
         root: Rc::new(Attr(Attribute {
             name: "Dimmer".to_string(),
             nickname: "Dim".to_string(),
