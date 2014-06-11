@@ -26,7 +26,7 @@ pub fn create_dimmer() {
         date: "June 7, 2014".to_string(),
         version: 0,
         chan_alloc: DmxChannelCount(1),
-        root: Rc::new(Attr(Attribute {
+        root: Rc::new(RefCell::new(Attr(Attribute {
             name: "Dimmer".to_string(),
             nickname: "Dim".to_string(),
             effect: (Dimmer, ColorspaceI, Value),
@@ -36,19 +36,13 @@ pub fn create_dimmer() {
                 offset: DmxAddressOffsetSingle(0),
                 renderer: DmxFloatRenderer(render_dmx_float_unipolar)
             })
-        }))
+        })))
     };
 
-    let root_profile_branch = Rc::new(PBranch(ProfileBranch {
-        name: "Device tree root".to_string(),
-        nickname: "DevTrRt".to_string(),
+    let dev_tree_root = Rc::new(RefCell::new(DeviceBranch{
+        profile_branch: None,
         children: Vec::new(),
     }));
-
-    let mut dev_tree_root = DeviceBranch{
-        profile_branch: Some(root_profile_branch.clone()),
-        children: Vec::new(),
-    };
 
     // TODO: factory method or constructor associated with DmxUniverse
     let univ = Rc::new(RefCell::new(DmxUniverse {
@@ -62,11 +56,11 @@ pub fn create_dimmer() {
     // Patch 256 dimmers
     let device_ct: uint = 512;
     for i in range(0u, device_ct) {
-        devices.push(patch(&p, &mut dev_tree_root, i, univ.clone()).unwrap());
+        devices.push(patch(&p, dev_tree_root.clone(), i, univ.clone()).unwrap());
     }
 
     fn write_dimmer_val(dim: &Device, v: f64) {
-        match *dim.root {
+        match *dim.root.borrow() {
             DeviceTreeEndpoint(ref e) => e.set_val(Continuous(v)),
             _ => ()
         }
@@ -87,7 +81,7 @@ pub fn create_dimmer() {
 
             // This assertion adds about +25% to the runtime of this test:
             // TODO: fn, method or macro to deboilerplatify these contortions:
-            let rendered_val = univ.deref().borrow().frame[i];
+            let rendered_val = univ.borrow().frame[i];
             assert!(rendered_val == limit_unipolar_unit_f64_to_u8(v));
             i = i + 1;
         }
