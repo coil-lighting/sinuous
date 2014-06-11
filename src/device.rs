@@ -63,7 +63,7 @@ pub struct Profile {
     pub version: int,       // 1, 2, 3...
     pub chan_alloc: ChannelAlloc, // what kinds of addresses do we need to allocate to patch one?
 
-    pub root: Rc<ProfileNode>,
+    pub root: Rc<ProfileGraph>,
 }
 
 /// We will gradually expand the ways we can allocate channels, potentially
@@ -72,7 +72,7 @@ pub enum ChannelAlloc {
     DmxChannelCount(uint),
 }
 
-pub enum ProfileNode {
+pub enum ProfileGraph {
     PBranch(ProfileBranch), // branch node
     Attr(Attribute), // leaf node
 }
@@ -80,7 +80,7 @@ pub enum ProfileNode {
 pub struct ProfileBranch {
     pub name: String, // "Technobeam"
     pub nickname: String, // "Techno"
-    pub children: Vec<Rc<ProfileNode>>,
+    pub children: Vec<Rc<ProfileGraph>>,
 }
 
 pub enum Addr {
@@ -135,8 +135,11 @@ impl DevicePatch {
 
 // TODO - optional custom labels for each node? currently just default to profile node labels
 pub struct DeviceBranch { // a DeviceBranch cannot outlive the profile it points to ('p)
-    pub profile_branch: Rc<ProfileNode>, // We actually want Rc<ProfileBranch>, but haven't gotten the compiler to accept that it's a special case of Rc<ProfileNode>
-    pub children: Vec<Rc<DeviceNode>>,
+    // TODO: make profile_branch optional for abstract nodes like 'show' -
+    // only concrete devices get a profile, otherwise we'd have no flexibility
+    // of composition.
+    pub profile_branch: Rc<ProfileGraph>, // We actually want Rc<ProfileBranch>, but haven't gotten the compiler to accept that it's a special case of Rc<ProfileGraph>
+    pub children: Vec<Rc<DeviceTree>>,
 }
 
 impl DeviceBranch {
@@ -149,15 +152,15 @@ impl DeviceBranch {
                 // matched value's type). This can be changed to bind to a
                 // reference by using the 'ref' keyword, or to a mutable
                 // reference using 'ref mut'."
-                DeviceNodeBranch(ref d) => d.render(buffer),
-                DeviceNodeEndpoint(ref d) => d.render(buffer)
+                DeviceTreeBranch(ref d) => d.render(buffer),
+                DeviceTreeEndpoint(ref d) => d.render(buffer)
             };
         }
     }
 }
 
 pub struct DeviceEndpoint { // a DeviceEndpoint cannot outlive the profile it points to ('p)
-    pub attribute: Rc<ProfileNode>, // We actually want Rc<Attribute>, but haven't gotten the compiler to accept that it's a special case of Rc<ProfileNode>
+    pub attribute: Rc<ProfileGraph>, // We actually want Rc<Attribute>, but haven't gotten the compiler to accept that it's a special case of Rc<ProfileGraph>
     pub value: Cell<Option<AttributeValue>>, // required if rendering is implemented for this attribute
 }
 
@@ -176,7 +179,7 @@ impl DeviceEndpoint {
     pub fn get_attribute<'a>(&'a self) -> &'a Attribute {
         match *self.attribute {
             Attr(ref a) => a,
-            _ => fail!("Every DeviceEndpoint must be bound to an Attr(Attribute), not a PBranch(ProfileBranch) ProfileNode."),
+            _ => fail!("Every DeviceEndpoint must be bound to an Attr(Attribute), not a PBranch(ProfileBranch) ProfileGraph."),
         }
     }
 
@@ -249,10 +252,10 @@ impl DeviceEndpoint {
 // A device is an actual instance of a device. A device is described by its
 // Profile tree.
 // CSM: we probably want to replace these essentially placeholder types by
-// declaring DeviceBranch and DeviceEndpoint as struct variants of DeviceNode.
-pub enum DeviceNode {
-    DeviceNodeBranch(DeviceBranch),
-    DeviceNodeEndpoint(DeviceEndpoint),
+// declaring DeviceBranch and DeviceEndpoint as struct variants of DeviceTree.
+pub enum DeviceTree {
+    DeviceTreeBranch(DeviceBranch),
+    DeviceTreeEndpoint(DeviceEndpoint),
 }
 
 pub struct Device<'p> {
@@ -271,7 +274,7 @@ pub struct Device<'p> {
     // the length is almost always 0 or 1
     // syntax::util::small_vector::SmallVector
     pub patches: Vec<DevicePatch>,
-    pub root: Rc<DeviceNode>,
+    pub root: Rc<DeviceTree>,
 }
 
 impl<'p> Device<'p> {
@@ -308,8 +311,8 @@ impl<'p> Device<'p> {
                             // Device.root is now always a DeviceBranch
 
                             match *self.root {
-                                DeviceNodeBranch(ref d) => d.render(buffer),
-                                DeviceNodeEndpoint(ref d) => d.render(buffer)
+                                DeviceTreeBranch(ref d) => d.render(buffer),
+                                DeviceTreeEndpoint(ref d) => d.render(buffer)
                             };
 
 
@@ -326,8 +329,8 @@ impl<'p> Device<'p> {
                     // profile gives its attributes relative addresses to relative
                     // addresses, writing slices on slices)
                     match *self.root {
-                        DeviceNodeBranch(ref d) => d.render(buffer),
-                        DeviceNodeEndpoint(ref d) => d.render(buffer)
+                        DeviceTreeBranch(ref d) => d.render(buffer),
+                        DeviceTreeEndpoint(ref d) => d.render(buffer)
                     };
                     */
                 }
@@ -336,11 +339,11 @@ impl<'p> Device<'p> {
     }
 }
 
-pub fn device_subtree_from_profile_subtree(root: &Rc<ProfileNode>) -> Rc<DeviceNode> {
+pub fn device_subtree_from_profile_subtree(root: &Rc<ProfileGraph>) -> Rc<DeviceTree> {
     match **root { // Rc implements the trait deref, so the * operator works.
         // if this is a profile branch, recurse over it
         PBranch(ref pb) => {
-            Rc::new(DeviceNodeBranch(DeviceBranch {
+            Rc::new(DeviceTreeBranch(DeviceBranch {
                 profile_branch: root.clone(),
 
                 // recurse over all of the children and collect into a vector
@@ -349,7 +352,7 @@ pub fn device_subtree_from_profile_subtree(root: &Rc<ProfileNode>) -> Rc<DeviceN
         },
         // If this is a leaf, make a corresponding endpoint.
         Attr(ref attr) => {
-            Rc::new(DeviceNodeEndpoint(DeviceEndpoint{
+            Rc::new(DeviceTreeEndpoint(DeviceEndpoint{
                 attribute: root.clone(),
                 // get the default value from the attribute to initialize
                 value: Cell::new(attr.default)
@@ -363,7 +366,7 @@ pub fn patch<'p>(profile: &'p Profile, device_tree_root: &mut DeviceBranch, addr
     match profile.chan_alloc {
         DmxChannelCount(len) => {
 
-            // build the corresponding DeviceNode for the root ProfileNode and put it in the tree
+            // build the corresponding DeviceTree for the root ProfileGraph and put it in the tree
             device_tree_root.children.push( device_subtree_from_profile_subtree(&'p profile.root) );
 
             let d = Device {

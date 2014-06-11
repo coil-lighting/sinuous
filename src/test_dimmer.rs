@@ -65,7 +65,7 @@ pub fn create_dimmer() {
 
     fn write_dimmer_val(dim: &Device, v: f64) {
         match *dim.root {
-            DeviceNodeEndpoint(ref e) => e.set_val(Continuous(v)),
+            DeviceTreeEndpoint(ref e) => e.set_val(Continuous(v)),
             _ => ()
         }
     }
