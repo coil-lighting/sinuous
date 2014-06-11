@@ -46,7 +46,7 @@ pub fn create_dimmer() {
     }));
 
     let mut dev_tree_root = DeviceBranch{
-        profile_branch: root_profile_branch.clone(),
+        profile_branch: Some(root_profile_branch.clone()),
         children: Vec::new(),
     };
 
@@ -59,7 +59,9 @@ pub fn create_dimmer() {
 
     let mut devices = Vec::new();
 
-    for i in range(0u, 256u) {
+    // Patch 256 dimmers
+    let device_ct: uint = 256;
+    for i in range(0u, device_ct) {
         devices.push(patch(&p, &mut dev_tree_root, i, univ.clone()).unwrap());
     }
 
@@ -71,10 +73,11 @@ pub fn create_dimmer() {
     }
 
     let t0: f64 = precise_time_s();
-    let n_trial = 10000;
+    let trial_ct = 10000;
 
-    for n in range(0, n_trial) {
-        let v = (n as f64)/(n_trial-1) as f64;
+    let mut write_ct: uint = 0;
+    for n in range(0, trial_ct) {
+        let v = (n as f64)/(trial_ct-1) as f64;
 
         // TODO: convert the for loop below to the equiv of python's enumerate(); don't use an extra uint i:
         let mut i: uint = 0;
@@ -82,17 +85,29 @@ pub fn create_dimmer() {
             write_dimmer_val(d,v);
             d.render();
 
+            // This assertion adds about +25% to the runtime of this test:
             // TODO: fn, method or macro to deboilerplatify these contortions:
             let rendered_val = univ.deref().borrow().frame[i];
             assert!(rendered_val == limit_unipolar_unit_f64_to_u8(v));
             i = i + 1;
         }
+        write_ct = write_ct + i
         //println!("{:?}", univ.borrow().frame);
     }
 
-    let avg_time = (1000f64 * (precise_time_s() - t0)) / (n_trial as f64);
-    println!("Average time: {} ms", avg_time);
+    let total_ms = 1000f64 * (precise_time_s() - t0);
+    let avg_ms_per_universe = total_ms / (trial_ct as f64);
+    let avg_ms_per_channel = total_ms / (write_ct as f64);
+    let writes_per_dmx_frame = 20f64 / avg_ms_per_channel;
+    let universes_per_dmx_frame = writes_per_dmx_frame / 512f64;
 
+    println!("For {} iterations:", trial_ct);
+    println!("    Average time per {}-channel test iteration: {} milliseconds",
+        device_ct, avg_ms_per_universe);
+    println!("    Average time per channel write: {} picoseconds for each of {} writes",
+        avg_ms_per_channel * 1000000f64, write_ct)
+    println!("    Extrapolated throughput: ({} channels = {} universes) per 20ms standard DMX frame",
+        writes_per_dmx_frame as u64, universes_per_dmx_frame as u64);
 }
 
 #[test]

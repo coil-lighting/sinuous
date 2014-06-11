@@ -135,10 +135,16 @@ impl DevicePatch {
 
 // TODO - optional custom labels for each node? currently just default to profile node labels
 pub struct DeviceBranch { // a DeviceBranch cannot outlive the profile it points to ('p)
-    // TODO: make profile_branch optional for abstract nodes like 'show' -
-    // only concrete devices get a profile, otherwise we'd have no flexibility
-    // of composition.
-    pub profile_branch: Rc<ProfileGraph>, // We actually want Rc<ProfileBranch>, but haven't gotten the compiler to accept that it's a special case of Rc<ProfileGraph>
+    /// Only concrete devices need profiles. Abstract devices don't -- for
+    /// example, a whole show could be a branch device, which you might split
+    /// into many rooms, each of which is likewise its own branch device,
+    /// potentially containing several assemblies (two different trusses, for
+    /// instance). Profiles are only strictly necessary for rendering subtrees
+    /// of the device tree.
+    ///
+    /// We really wanted Rc<ProfileBranch> but haven't gotten the compiler to
+    /// accept that Rc<ProfileBranch> is just a special case of Rc<ProfileGraph>:
+    pub profile_branch: Option<Rc<ProfileGraph>>,
     pub children: Vec<Rc<DeviceTree>>,
 }
 
@@ -159,9 +165,13 @@ impl DeviceBranch {
     }
 }
 
-pub struct DeviceEndpoint { // a DeviceEndpoint cannot outlive the profile it points to ('p)
-    pub attribute: Rc<ProfileGraph>, // We actually want Rc<Attribute>, but haven't gotten the compiler to accept that it's a special case of Rc<ProfileGraph>
-    pub value: Cell<Option<AttributeValue>>, // required if rendering is implemented for this attribute
+pub struct DeviceEndpoint {
+    /// We really wanted Rc<Attribute> but haven't gotten the compiler to accept
+    /// that Rc<Attribute> is just a special case of Rc<ProfileGraph>:
+    pub attribute: Rc<ProfileGraph>,
+
+    /// Required only if rendering is implemented for this attribute:
+    pub value: Cell<Option<AttributeValue>>,
 }
 
 impl DeviceEndpoint {
@@ -344,7 +354,7 @@ pub fn device_subtree_from_profile_subtree(root: &Rc<ProfileGraph>) -> Rc<Device
         // if this is a profile branch, recurse over it
         PBranch(ref pb) => {
             Rc::new(DeviceTreeBranch(DeviceBranch {
-                profile_branch: root.clone(),
+                profile_branch: Some(root.clone()),
 
                 // recurse over all of the children and collect into a vector
                 children: pb.children.iter().map(|pb_child| device_subtree_from_profile_subtree(pb_child)).collect()
