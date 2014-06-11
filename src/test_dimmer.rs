@@ -18,6 +18,7 @@ use topo::*;
 /// instance of a dimmer Device into this universe. Change its state and
 /// measure performance.
 pub fn create_dimmer() {
+
     let p = Profile{
         name: "Dimmer".to_string(),
         nickname: "Dim".to_string(),
@@ -26,7 +27,7 @@ pub fn create_dimmer() {
         date: "June 7, 2014".to_string(),
         version: 0,
         chan_alloc: DmxChannelCount(1),
-        root: Rc::new(Attr(Attribute {
+        root: box Attr(Attribute {
             name: "Dimmer".to_string(),
             nickname: "Dim".to_string(),
             effect: (Dimmer, ColorspaceI, Value),
@@ -36,17 +37,11 @@ pub fn create_dimmer() {
                 offset: DmxAddressOffsetSingle(0),
                 renderer: DmxFloatRenderer(render_dmx_float_unipolar)
             })
-        }))
+        })
     };
 
-    let root_profile_branch = Rc::new(PBranch(ProfileBranch {
-        name: "Device tree root".to_string(),
-        nickname: "DevTrRt".to_string(),
-        children: Vec::new(),
-    }));
-
     let mut dev_tree_root = DeviceBranch{
-        profile_branch: Some(root_profile_branch.clone()),
+        profile_branch: None,
         children: Vec::new(),
     };
 
@@ -66,9 +61,11 @@ pub fn create_dimmer() {
     }
 
     fn write_dimmer_val(dim: &Device, v: f64) {
-        match *dim.root {
-            DeviceTreeEndpoint(ref e) => e.set_val(Continuous(v)),
-            _ => ()
+        unsafe{
+            match *dim.root {
+                DeviceTreeEndpoint(ref e) => e.set_val(Continuous(v)),
+                _ => ()
+            }
         }
     }
 

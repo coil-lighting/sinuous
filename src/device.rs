@@ -32,6 +32,8 @@ use std::cell::RefCell;
 use std::cell::Cell;
 use std::rc::Rc;
 
+use std::mem;
+
 // Named subtypes for the primitive storage representing the numeric value for
 // a Device Attribute's instance.
 #[deriving(Clone)]
@@ -63,7 +65,7 @@ pub struct Profile {
     pub version: int,       // 1, 2, 3...
     pub chan_alloc: ChannelAlloc, // what kinds of addresses do we need to allocate to patch one?
 
-    pub root: Rc<ProfileGraph>,
+    pub root: Box<ProfileGraph>,
 }
 
 /// We will gradually expand the ways we can allocate channels, potentially
@@ -80,7 +82,7 @@ pub enum ProfileGraph {
 pub struct ProfileBranch {
     pub name: String, // "Technobeam"
     pub nickname: String, // "Techno"
-    pub children: Vec<Rc<ProfileGraph>>,
+    pub children: Vec<Box<ProfileGraph>>,
 }
 
 pub enum Addr {
@@ -134,7 +136,7 @@ impl DevicePatch {
 // 3) A logical device which is part of the scenegraph. Maybe 'SceneDevice'?
 
 // TODO - optional custom labels for each node? currently just default to profile node labels
-pub struct DeviceBranch { // a DeviceBranch cannot outlive the profile it points to ('p)
+pub struct DeviceBranch<'p> { // a DeviceBranch cannot outlive the profile it points to ('p)
     /// Only concrete devices need profiles. Abstract devices don't -- for
     /// example, a whole show could be a branch device, which you might split
     /// into many rooms, each of which is likewise its own branch device,
@@ -144,11 +146,11 @@ pub struct DeviceBranch { // a DeviceBranch cannot outlive the profile it points
     ///
     /// We really wanted Rc<ProfileBranch> but haven't gotten the compiler to
     /// accept that Rc<ProfileBranch> is just a special case of Rc<ProfileGraph>:
-    pub profile_branch: Option<Rc<ProfileGraph>>,
-    pub children: Vec<Rc<DeviceTree>>,
+    pub profile_branch: Option<&'p ProfileGraph>,
+    pub children: Vec<Box<DeviceTree<'p>>>,
 }
 
-impl DeviceBranch {
+impl<'p> DeviceBranch<'p> {
     pub fn render(&self, buffer: &mut[u8]) {
         // TODO verify that this operates by reference, not by copy!
         for child in self.children.iter() {
@@ -165,16 +167,16 @@ impl DeviceBranch {
     }
 }
 
-pub struct DeviceEndpoint {
+pub struct DeviceEndpoint<'p> {
     /// We really wanted Rc<Attribute> but haven't gotten the compiler to accept
     /// that Rc<Attribute> is just a special case of Rc<ProfileGraph>:
-    pub attribute: Rc<ProfileGraph>,
+    pub attribute: &'p ProfileGraph,
 
     /// Required only if rendering is implemented for this attribute:
     pub value: Cell<Option<AttributeValue>>,
 }
 
-impl DeviceEndpoint {
+impl<'p> DeviceEndpoint<'p> {
 
     pub fn get_val(&self) -> Option<AttributeValue> {
         self.value.get()
@@ -186,12 +188,14 @@ impl DeviceEndpoint {
         self.value.set(Some(val))
     }
 
-    pub fn get_attribute<'a>(&'a self) -> &'a Attribute {
+
+    pub fn get_attribute<'p>(&'p self) -> &'p Attribute {
         match *self.attribute {
             Attr(ref a) => a,
             _ => fail!("Every DeviceEndpoint must be bound to an Attr(Attribute), not a PBranch(ProfileBranch) ProfileGraph."),
         }
     }
+
 
     /// Fail if you have corrupted the device tree by linking an endpoint to
     /// a non-Attribute ProfileBranch.
@@ -208,10 +212,12 @@ impl DeviceEndpoint {
         };
 
         // TODO: also make sure this doesn't copy anything by value
+
         let dmx: &DmxMap = match attribute.dmx {
             Some(ref x) => x,
             None => fail!("Every attribute which supports rendering must supply a DmxMap (for now)."),
         };
+
 
         let offset: uint = match dmx.offset {
             // TODO Might just collapse this field into DmxAttributeRenderers.
@@ -263,9 +269,9 @@ impl DeviceEndpoint {
 // Profile tree.
 // CSM: we probably want to replace these essentially placeholder types by
 // declaring DeviceBranch and DeviceEndpoint as struct variants of DeviceTree.
-pub enum DeviceTree {
-    DeviceTreeBranch(DeviceBranch),
-    DeviceTreeEndpoint(DeviceEndpoint),
+pub enum DeviceTree<'p> {
+    DeviceTreeBranch(DeviceBranch<'p>),
+    DeviceTreeEndpoint(DeviceEndpoint<'p>),
 }
 
 pub struct Device<'p> {
@@ -284,7 +290,7 @@ pub struct Device<'p> {
     // the length is almost always 0 or 1
     // syntax::util::small_vector::SmallVector
     pub patches: Vec<DevicePatch>,
-    pub root: Rc<DeviceTree>,
+    pub root: *mut DeviceTree<'p>,
 }
 
 impl<'p> Device<'p> {
@@ -317,13 +323,10 @@ impl<'p> Device<'p> {
                         Some(mut u_ref) => {
                             let buffer = dmx_addr.slice_universe(&mut u_ref);
 
-                            //self.root.render(buffer);
-                            // Device.root is now always a DeviceBranch
-
-                            match *self.root {
+                            unsafe{ match *self.root {
                                 DeviceTreeBranch(ref d) => d.render(buffer),
                                 DeviceTreeEndpoint(ref d) => d.render(buffer)
-                            };
+                            };}
 
 
                         },
@@ -349,35 +352,36 @@ impl<'p> Device<'p> {
     }
 }
 
-pub fn device_subtree_from_profile_subtree(root: &Rc<ProfileGraph>) -> Rc<DeviceTree> {
-    match **root { // Rc implements the trait deref, so the * operator works.
+pub fn device_subtree_from_profile_subtree<'p>(root: &'p ProfileGraph) -> Box<DeviceTree<'p>> {
+
+    match *root {
         // if this is a profile branch, recurse over it
         PBranch(ref pb) => {
-            Rc::new(DeviceTreeBranch(DeviceBranch {
+            box DeviceTreeBranch(DeviceBranch {
                 profile_branch: Some(root.clone()),
 
                 // recurse over all of the children and collect into a vector
-                children: pb.children.iter().map(|pb_child| device_subtree_from_profile_subtree(pb_child)).collect()
-            }))
+                children: pb.children.iter().map(|pb_child| device_subtree_from_profile_subtree(*pb_child)).collect()
+            })
         },
         // If this is a leaf, make a corresponding endpoint.
         Attr(ref attr) => {
-            Rc::new(DeviceTreeEndpoint(DeviceEndpoint{
+            box DeviceTreeEndpoint(DeviceEndpoint{
                 attribute: root.clone(),
                 // get the default value from the attribute to initialize
                 value: Cell::new(attr.default)
-            }))
+            })
         }
     }
 }
 
 // at the moment this only understands how to patch one contiguous section of a dmx universe
-pub fn patch<'p>(profile: &'p Profile, device_tree_root: &mut DeviceBranch, addr: uint, univ: Rc<RefCell<DmxUniverse>> ) -> Option<Device<'p>> {
+pub fn patch<'p>(profile: &'p Profile, device_tree_root: &mut DeviceBranch<'p>, addr: uint, univ: Rc<RefCell<DmxUniverse>> ) -> Option<Device<'p>> {
     match profile.chan_alloc {
         DmxChannelCount(len) => {
 
             // build the corresponding DeviceTree for the root ProfileGraph and put it in the tree
-            device_tree_root.children.push( device_subtree_from_profile_subtree(&'p profile.root) );
+            device_tree_root.children.push( device_subtree_from_profile_subtree( profile.root ) );
 
             let d = Device {
                 profile: profile,
@@ -386,7 +390,7 @@ pub fn patch<'p>(profile: &'p Profile, device_tree_root: &mut DeviceBranch, addr
                 id: 0,
                 patches: vec!(DevicePatch::new_dmx(addr, len, univ)),
                 // unwrap() is safe here as we just pushed an element onto the vector so it cannot be empty.
-                root: device_tree_root.children.last().unwrap().clone()
+                root: &mut **device_tree_root.children.mut_last().unwrap()
             };
 
             Some(d)
