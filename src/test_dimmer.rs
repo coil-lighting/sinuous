@@ -60,7 +60,7 @@ pub fn create_dimmer() {
     let mut devices = Vec::new();
 
     // Patch 256 dimmers
-    let device_ct: uint = 256;
+    let device_ct: uint = 512;
     for i in range(0u, device_ct) {
         devices.push(patch(&p, &mut dev_tree_root, i, univ.clone()).unwrap());
     }
