@@ -83,27 +83,27 @@ use device::DeviceTree;
 /// These little structs should normally be passed by value.
 /// TODO make copyable
 pub struct Timepoint {
-	scene_ns: u64,
-	system_ns: u64,
-	frame_ct: u64,
+    scene_ns: u64,
+    system_ns: u64,
+    frame_ct: u64,
 }
 
 pub struct Timebase {
-	now: Timepoint,
-	// TODO: apply distortion envelope(s) to the flow of time, decouple it from the flow of system time
+    now: Timepoint,
+    // TODO: apply distortion envelope(s) to the flow of time, decouple it from the flow of system time
 }
 
 pub enum Layer {
-	SubmixerLayer(MixerTree),
-	AnimatorLayer(Animator),
+    SubmixerLayer(MixerTree),
+    AnimatorLayer(Animator),
 }
 
 pub struct MixerTree {
-	pub layer_name: String,
+    pub layer_name: String,
 
-	pub scene: Rc<RefCell<DeviceTree>>,
+    pub scene: Rc<RefCell<DeviceTree>>,
 
-	// TODOMB: verify use of Rc<RefCell<T> with CM
+    // TODOMB: verify use of Rc<RefCell<T> with CM
     pub children: Vec<Rc<RefCell<Layer>>>,
 
     // (sub)master fader is just an output filter, albeit maybe a special one
@@ -114,29 +114,29 @@ pub struct MixerTree {
 }
 
 impl MixerTree {
-	pub fn animate(time: Timepoint) {
-		// TBD - should have similar or same interface as Animator.animate() below
-	}
+    pub fn animate(time: Timepoint) {
+        // TBD - should have similar or same interface as Animator.animate() below
+    }
 }
 
 /// Interface to a plugin such as Mr. Stroboto or Color Organism. Details TDB.
 /// Animator is a mixer component. It's on our side of the fence. We still need
 /// to figure out how a user plugs into it, both statefully and non-statefully.
 pub struct Animator {
-	pub layer_name: String,
-	pub effect_name: String,
-	// TODO - some way to say that an animator layer might only work on a
-	// subtree of the whole scene - maybe a reference to a node in the parent
-	// mixer's tree?
+    pub layer_name: String,
+    pub effect_name: String,
+    // TODO - some way to say that an animator layer might only work on a
+    // subtree of the whole scene - maybe a reference to a node in the parent
+    // mixer's tree?
 }
 
 impl Animator {
-	pub fn animate(time: Timepoint) {
-		// TBD - takes some kind of DeviceTree (copy?), returns the same
-		// TBD - takes some kind of timing object
-	}
+    pub fn animate(time: Timepoint) {
+        // TBD - takes some kind of DeviceTree (copy?), returns the same
+        // TBD - takes some kind of timing object
+    }
 
-	pub fn repatch(/* some kind of DeviceTree*/) {
-		// TBD
-	}
+    pub fn repatch(/* some kind of DeviceTree*/) {
+        // TBD
+    }
 }
