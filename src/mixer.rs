@@ -88,14 +88,24 @@ pub struct Timepoint {
     frame_ct: u64,
 }
 
+/// A Timebase regulates the flow of time in a scene.
+/// TODO: apply distortion envelope(s) to the flow of time.
+/// TODO: decouple timekeeping from system time (but see Timeout docs for exceptions).
 pub struct Timebase {
     now: Timepoint,
-    // TODO: apply distortion envelope(s) to the flow of time, decouple it from the flow of system time
 }
 
 pub enum Layer {
     SubmixerLayer(MixerTree),
-    AnimatorLayer(Animator),
+
+    /// A generator requires no access to the developing frame in order to
+    /// render its output. It needs only its isolated, private subscene.
+    GeneratorLayer(Animator),
+
+    /// A filter requires access to the developing frame in order to render its
+    /// output, because its output depends on knowing what lower layers rendered
+    /// in the current frame.
+    FilterLayer(Animator),
 }
 
 pub struct MixerTree {
