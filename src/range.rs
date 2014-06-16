@@ -8,6 +8,7 @@
 
 /// Describe a range of values. In libsinuous, assume ranges are interpreted
 /// inclusively unless otherwise noted.
+#[deriving(Show,Clone)]
 pub struct Range <T> {
     pub min: T,
     pub max: T,

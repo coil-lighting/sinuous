@@ -255,7 +255,8 @@ impl DeviceEndpoint {
                 r(nf, offset, buffer);
             },
             DmxIntIndexedWithRangeRenderer(r, ref range) => {
-                r(ni, range, offset, buffer);
+                // TODO: fix render to have explicit lifetime specifier to avoid the copy here:
+                r(ni, range.clone(), offset, buffer);
             },
             DmxBooleanWithRangeRenderer(r, ref range) => {
                 // TODO do away with booleans and use int

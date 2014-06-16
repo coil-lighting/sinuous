@@ -139,7 +139,7 @@ pub fn render_dmx_double_big_endian(n: f64, offset: uint, buffer: &mut[u8])
 /// The parameter index must be a valid integer index into attribute.range.
 /// (For now, out of range indices revert to 0.)
 // TODO for uniformity, make an enum for this kind of IndexedRangeMatrix? if so, move relevant docs into it.
-pub fn render_dmx_int_indexed_with_range(n: i64, range: &~[DmxRange],
+pub fn render_dmx_int_indexed_with_range(n: i64, range: &[DmxRange],
         offset: uint, buffer: &mut[u8]) -> u8 {
 
     // TODO: deal with possibility of out-of-range n, for 32 bit systems
@@ -216,8 +216,8 @@ pub enum DmxAttributeRenderer {
     DmxDoubleRenderer(fn(n: f64, offset: uint, buffer: &mut[u8]) -> (u8, u8)),
 
     DmxIntIndexedWithRangeRenderer(
-        fn(n: i64, range: &~[DmxRange], offset: uint, buffer: &mut[u8]) -> u8,
-        ~[DmxRange]
+        fn(n: i64, range: Vec<DmxRange>, offset: uint, buffer: &mut[u8]) -> u8,
+        Vec<DmxRange> // CSM: Not sure about what the ownership situation should be with DmxRange.
     ),
 
     DmxBooleanWithRangeRenderer(
