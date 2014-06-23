@@ -1,0 +1,18 @@
+AFAIK, these TLAs originated at one of the UC Berkeley neuroscience labs.
+
+BCH: branch a repository (or related)
+BUG: fix or discover a defect
+CNF: change a configuration file
+DOC: docs and comments
+ENH: add a completely new feature or enhance an existing one
+GUI: modify code related to the user interface
+LIB: reorganize crates or manage crates
+LNT: eliminate lint
+LOG: modify logging messages or infrastructure
+MNT: general maintenance
+MRG: merge a repository (or related)
+REF: refactor: reorganizing code without changing its functionality
+REQ: modify requirements / dependencies
+SEC: modify security policies, credentials, or auth protocols
+TST: add, subtract, or alter tests
+VER: change the official version of this project
