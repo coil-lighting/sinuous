@@ -32,24 +32,6 @@ use std::cell::RefCell;
 use std::cell::Cell;
 use std::rc::Rc;
 
-// Named subtypes for the primitive storage representing the numeric value for
-// a Device Attribute's instance.
-#[deriving(Clone)]
-pub enum AttributeValue {
-    Continuous(f64),
-    Discrete(i64), // TODO - decide whether to make this unsigned instead
-}
-
-pub struct Attribute {
-    pub name: String, // e.g. "Gobo wheel 1 position"
-    pub nickname: String, // e.g. "Gobo1"
-    pub effect: (EffectType, EffectSubtype, EffectSubsubtype),
-    pub topo: &'static Topo,
-    pub default: Option<AttributeValue>, // required if rendering is implemented
-    pub dmx: Option<DmxMap>, // required if DMX rendering is implemented
-}
-
-
 // Hypothesis: devices' descriptions are trees of ProfileElements, and this will
 // suffice to describe everything from simple, 1 dimensional, nonmodal
 // attributes like a dimmer channel to complex, multidimensional, modal
@@ -72,108 +54,109 @@ pub enum ChannelAlloc {
     DmxChannelCount(uint),
 }
 
+/// A node in a graph of profile nodes. This node might represent a single
+/// device type, or a single data field in a device descriptor, or a type of
+/// assembly of multiple devices, or a discrete subsystem in a type of device.
+///
+/// Note that although aggregations of profile nodes are acyclic digraphs,
+/// aggregations of device nodes are simply trees.
+///
+/// Once instantiated, a ProfileGraph node's state is immutable. Nodes may
+/// therefore safely share parents. This makes it possible to efficiently
+/// encode small variations between similar profiles. Similar profiles often
+/// arise across product ranges, e.g. Technobeam, Technobeam-i, and Mac 250.
+/// Similarities also arise across lineages of customization; for example, I
+/// might have customized the color wheel in some of my Technobeams, and the
+/// effect wheel in others, but they all derive from the same OEM profile.
+/// Because we model profiles as append-only acyclic digraphs, the cost of
+/// encoding a variant is just the cost of the differences.
 pub enum ProfileGraph {
-    PBranch(ProfileBranch), // branch node
-    Attr(Attribute), // leaf node
+    ProfileGraphAttribute(Attribute), // a leaf node
+    ProfileGraphBranch(ProfileBranch), // a normal branch node (like a folder)
+    ProfileGraphSwitch(ProfileSwitch), // an exclusive modal switch branch node
 }
 
+// Named subtypes for the primitive storage representing the numeric value for
+// a Device Attribute's instance.
+#[deriving(Clone)]
+pub enum AttributeValue {
+    Continuous(f64),
+    Discrete(i64), // TODO - decide whether to make this unsigned instead
+}
+
+/// A leaf node: usually, but not always, a renderable datapoint.
+pub struct Attribute {
+    pub name: String, // e.g. "Gobo wheel 1 position"
+    pub nickname: String, // e.g. "Gobo1"
+    pub effect: (EffectType, EffectSubtype, EffectSubsubtype),
+    pub topo: &'static Topo,
+    pub default: Option<AttributeValue>, // required if rendering is implemented
+    pub dmx: Option<DmxMap>, // required if DMX rendering is implemented
+}
+
+/// An ordinary, inclusive branch node, used to group Profile subgraphs.
+///
+/// For example, all of the leaf Attributes of a simple device type might be
+/// peers, sharing a common parent ProfileBranch. You might use this pattern to
+/// describe a six channel dimmer pack, where the dimmer pack is a ProfileBranch
+/// node with six child Attributes, one per channel.
 pub struct ProfileBranch {
     pub name: String, // "Technobeam"
     pub nickname: String, // "Techno"
     pub children: Vec<Rc<RefCell<ProfileGraph>>>,
 }
 
+/// A switching modal branch node, which declares that only one of its
+/// children is renderable. For example, you might use this to switch on and
+/// off onboard temporal interpolation for a device. (Sometimes a switch is
+/// just a boolean Attribute endpoint, but certain manufacturers, especially
+/// in the early days of moving lights, responded to the limited channel
+/// range of DMX and available control boards by packing multiple attributes
+/// and multiple device modalities into very few channels. This made life
+/// difficult for profile library developers and arguably hobbled software
+/// evolution across the lighting industry. ProfileSwitch demonstrates
+/// an easy way to split a large number of mutally exclusive behaviors into
+/// multiple branches of a profile, even when those numerous behaviors are
+/// eventually serialized as a smaller number of channels.
+///
+/// TODO: Deserialization algorithm. (May require more data fields here.)
+pub struct ProfileSwitch {
+    pub name: String, // "Motor smoothing"
+    pub nickname: String, // "MSpeed"
+    pub children: Vec<Rc<RefCell<ProfileGraph>>>,
+    pub default_selection: uint, // TODO: might need to be Option<uint> for construction purposes, but hopefully not
+}
+
+/// A device is an actual instance of a device. A device is described by its
+/// Profile tree.
+///
+/// Note that although aggregations of profile nodes are acyclic digraphs,
+/// aggregations of device nodes are simply trees.
+///
+/// Unlike their profiles, devices are trees because their payload is mutable,
+/// so a device node must never be incorporated by reference into multiple
+/// parent devices.
+pub enum DeviceTree {
+    DeviceTreeEndpoint(DeviceEndpoint),
+    DeviceTreeBranch(DeviceBranch),
+    DeviceTreeSwitch(DeviceSwitch),
+}
+
 pub enum Addr {
-    DmxAddrType(DmxAddr), // TODO universe + address
+    DmxAddrType(DmxAddr), // TODO universe + address?
     // Midi_addrType,
     // OscAddrType,
     // OpenPixelControlAddrType,
     // ...
 }
 
-
-// Use case: many physical technobeams all addressed to channel 1
-pub struct DevicePatch {
-    pub addr: Addr,
-
-    // A DevicePatch has multiple locations in case more than one physical
-    // device with the same address, is managed by one logical DevicePatch.
-    pub locs: Vec<Loc>
-}
-
-impl DevicePatch {
-
-    /// Make a new patch in the given universe. Do not (yet) check for
-    /// conflicting patches. (TODO: *optionally* check for conflicts.)
-    /// The returned patch has no associated Locs.
-    pub fn new_dmx(addr: uint, len: uint, univ: Rc<RefCell<DmxUniverse>> ) -> DevicePatch {
-        DevicePatch{
-            addr: DmxAddrType(DmxAddr{
-                universe: univ,
-                address: addr,
-                length: len
-            }),
-            locs: Vec::new()
-        }
-    }
-}
-
-// There seem to be three layers of deviceness:
-//
-// 1) A 'physical' device, or rather a specific instance, i.e. one ani_mated model
-// in an external editor or one fixture on a tree.
-//
-// 2) An 'output' device (for lack of a better name), which is an addressed
-// device on a specific universe. Whether we want to allow multiple output ports
-// per universe is a separate question. It would allow us to make a soft DMX
-// splitter without complicating the first-order output mappings associated with
-// devices in the scenegraph. This might be called a 'logical device' or something.
-// Or a 'patched device.' (Perhaps a universe gets patched, too.)
-//     - these are managed by DevicePatches.
-//
-// 3) A logical device which is part of the scenegraph. Maybe 'SceneDevice'?
-
-// TODO - optional custom labels for each node? currently just default to profile node labels
-pub struct DeviceBranch {
-    /// Only concrete devices need profiles. Abstract devices don't -- for
-    /// example, a whole show could be a branch device, which you might split
-    /// into many rooms, each of which is likewise its own branch device,
-    /// potentially containing several assemblies (two different trusses, for
-    /// instance). Profiles are only strictly necessary for rendering subtrees
-    /// of the device tree.
-    ///
-    /// We really wanted Rc<ProfileBranch> but haven't gotten the compiler to
-    /// accept that Rc<ProfileBranch> is just a special case of Rc<ProfileGraph>:
-    pub profile_branch: Option<Rc<RefCell<ProfileGraph>>>,
-    pub children: Vec<Rc<RefCell<DeviceTree>>>,
-}
-
-impl DeviceBranch {
-    pub fn render(&self, buffer: &mut[u8]) {
-        // TODO verify that this operates by reference, not by copy!
-        for child in self.children.iter() {
-            match *child.borrow() {
-                // Rust manual: "Patterns that bind variables default to binding
-                // to a copy or move of the matched value (depending on the
-                // matched value's type). This can be changed to bind to a
-                // reference by using the 'ref' keyword, or to a mutable
-                // reference using 'ref mut'."
-                DeviceTreeBranch(ref d) => d.render(buffer),
-                DeviceTreeEndpoint(ref d) => d.render(buffer)
-            };
-        }
-    }
-}
-
-// TODO DeviceSwitch: like DeviceBranch, but only traverses one of its children during render()
-
-
 pub struct DeviceEndpoint {
-    /// We really wanted Rc<Attribute> but haven't gotten the compiler to accept
-    /// that Rc<Attribute> is just a special case of Rc<ProfileGraph>:
+    /// This must be specially a reference to an Attribute, not any old
+    /// ProfileGraph, but we haven't figured out how to express the specialized
+    /// reference.
     pub attribute: Rc<RefCell<ProfileGraph>>,
 
-    /// Required only if rendering is implemented for this attribute:
+    /// Required only if rendering is implemented for this attribute.
     pub value: Cell<Option<AttributeValue>>,
 }
 
@@ -189,16 +172,6 @@ impl DeviceEndpoint {
         self.value.set(Some(val))
     }
 
-    // Lifetime problems here with returning a ref into a RefCell.
-    /*
-    pub fn get_attribute<'a>(&'a self) -> &'a Attribute {
-        match *self.attribute.borrow() {
-            Attr(ref a) => a,
-            _ => fail!("Every DeviceEndpoint must be bound to an Attr(Attribute), not a PBranch(ProfileBranch) ProfileGraph."),
-        }
-    }
-    */
-
     /// Fail if you have corrupted the device tree by linking an endpoint to
     /// a non-Attribute ProfileBranch.
     pub fn render(&self, buffer: &mut[u8]) {
@@ -206,10 +179,9 @@ impl DeviceEndpoint {
         let at_ref = self.attribute.borrow();
 
         let attribute = match *at_ref {
-            Attr(ref a) => a,
-            _ => fail!("Every DeviceEndpoint must be bound to an Attr(Attribute), not a PBranch(ProfileBranch) ProfileGraph."),
+            ProfileGraphAttribute(ref a) => a,
+            _ => fail!("Every DeviceEndpoint must be bound to a ProfileGraphAttribute, not a ProfileGraphBranch."),
         };
-        //let attribute = self.get_attribute();
 
         // Either return my value, or return default if no value.
         let n: AttributeValue = match self.get_val() {
@@ -273,13 +245,97 @@ impl DeviceEndpoint {
     }
 }
 
-// A device is an actual instance of a device. A device is described by its
-// Profile tree.
-// CSM: we probably want to replace these essentially placeholder types by
-// declaring DeviceBranch and DeviceEndpoint as struct variants of DeviceTree.
-pub enum DeviceTree {
-    DeviceTreeBranch(DeviceBranch),
-    DeviceTreeEndpoint(DeviceEndpoint),
+/// A branch node in a tree of device nodes. This node might represent a single
+/// instrument, or a group of instruments, or a subsystem in a single
+/// instrument.
+pub struct DeviceBranch {
+    /// Only concrete devices need profiles. Abstract devices don't -- for
+    /// example, a whole show could be a branch device, which you might split
+    /// into many rooms, each of which is likewise its own branch device,
+    /// potentially containing several assemblies (two different trusses, for
+    /// instance). Profiles are only strictly necessary for rendering subtrees
+    /// of the device tree.
+    pub profile_branch: Option<Rc<RefCell<ProfileGraph>>>,
+    pub children: Vec<Rc<RefCell<DeviceTree>>>,
+}
+
+impl DeviceBranch {
+    pub fn render(&self, buffer: &mut[u8]) {
+        for child in self.children.iter() {
+            match *child.borrow() {
+                // Rust manual: "Patterns that bind variables default to binding
+                // to a copy or move of the matched value (depending on the
+                // matched value's type). This can be changed to bind to a
+                // reference by using the 'ref' keyword, or to a mutable
+                // reference using 'ref mut'."
+                DeviceTreeEndpoint(ref d) => d.render(buffer),
+                DeviceTreeBranch(ref d) => d.render(buffer),
+                DeviceTreeSwitch(ref d) => d.render(buffer),
+            };
+        }
+    }
+}
+
+/// A switching modal branch node in a tree of device nodes. This node typically
+/// represents a modal feature in a single instrument, or (very rarely) a mode
+/// of a whole group of instruments, or a complex modal subsystem in a single
+/// instrument.
+pub struct DeviceSwitch {
+    /// Only concrete devices need profiles. Abstract devices don't -- for
+    /// example, a whole show could be a branch device, which you might split
+    /// into many rooms, each of which is likewise its own branch device,
+    /// potentially containing several assemblies (two different trusses, for
+    /// instance). Profiles are only strictly necessary for rendering subtrees
+    /// of the device tree.
+    pub profile_branch: Option<Rc<RefCell<ProfileGraph>>>,
+    pub children: Vec<Rc<RefCell<DeviceTree>>>,
+
+    /// The array index of the selected child branch
+    pub selection: uint,
+}
+
+impl DeviceSwitch {
+    pub fn render(&self, buffer: &mut[u8]) {
+    	// foo FIXME error: cannot index a value of type `collections::vec::Vec<alloc::rc::Rc<core::cell::RefCell<device::DeviceTree>>>`
+        // let child = self.children[self.selection];
+        // stupid workaround:
+        let mut i: uint = 0;
+        for child in self.children.iter() {
+        	if i == self.selection {
+		        match *child.borrow() {
+		            DeviceTreeEndpoint(ref d) => d.render(buffer),
+		            DeviceTreeBranch(ref d) => d.render(buffer),
+		            DeviceTreeSwitch(ref d) => d.render(buffer),
+		        };
+		    }
+	        i = i + 1;
+	    }
+    }
+}
+
+// Use case: many physical technobeams all addressed to channel 1
+pub struct DevicePatch {
+    pub addr: Addr,
+
+    // A DevicePatch has multiple locations in case more than one physical
+    // device with the same address, is managed by one logical DevicePatch.
+    pub locs: Vec<Loc>
+}
+
+impl DevicePatch {
+    /// Make a new patch in the given universe. Do not (yet) check for
+    /// conflicting patches. (TODO: *optionally* check for conflicts.)
+    /// The returned patch has no associated Locs.
+    pub fn new_dmx(addr: uint, len: uint, univ: Rc<RefCell<DmxUniverse>> ) -> DevicePatch {
+        DevicePatch{
+            addr: DmxAddrType(DmxAddr{
+                universe: univ,
+                address: addr,
+                length: len
+            }),
+            locs: Vec::new()
+        }
+    }
 }
 
 pub struct Device<'p> {
@@ -318,6 +374,8 @@ impl<'p> Device<'p> {
         // corrupt other (non-overlapping) devices, but it also can't range
         // over the whole universe without belonging to a device that claims
         // the whole universe. Hopefully this is okay.
+        //
+        // TODO do not render redundantly if patched more than once (with the same protocol)?
         for patch in self.patches.mut_iter() {
             match patch.addr {
                 DmxAddrType(ref mut dmx_addr) => {
@@ -332,8 +390,9 @@ impl<'p> Device<'p> {
                             let buffer = dmx_addr.slice_universe(&mut u_ref);
 
                             match *self.root.borrow() {
+                                DeviceTreeEndpoint(ref d) => d.render(buffer),
                                 DeviceTreeBranch(ref d) => d.render(buffer),
-                                DeviceTreeEndpoint(ref d) => d.render(buffer)
+                                DeviceTreeSwitch(ref d) => d.render(buffer),
                             };
 
 
@@ -341,19 +400,6 @@ impl<'p> Device<'p> {
                         None => () // if something else is already writing to
                         // the universe buffer, we can't get access.  give up.
                     }
-                    /*
-                    let (buffer, univ_ref)  = dmx_addr.slice_universe();
-
-                    // TODO do not render redundantly if patched more than once (with the same protocol)?
-                    // TODO? track most recent profile slice as we descend the tree
-                    // FUTURE think about how subprofiles might come in handy (where a
-                    // profile gives its attributes relative addresses to relative
-                    // addresses, writing slices on slices)
-                    match *self.root {
-                        DeviceTreeBranch(ref d) => d.render(buffer),
-                        DeviceTreeEndpoint(ref d) => d.render(buffer)
-                    };
-                    */
                 }
             }
         }
@@ -362,23 +408,34 @@ impl<'p> Device<'p> {
 
 pub fn device_subtree_from_profile_subtree(root: &Rc<RefCell<ProfileGraph>>) -> Rc<RefCell<DeviceTree>> {
     match *root.borrow() { // Rc implements the trait deref, so the * operator works.
-        // if this is a profile branch, recurse over it
-        PBranch(ref pb) => {
-            Rc::new(RefCell::new(DeviceTreeBranch(DeviceBranch {
-                profile_branch: Some(root.clone()),
-
-                // recurse over all of the children and collect into a vector
-                children: pb.children.iter().map(|pb_child| device_subtree_from_profile_subtree(pb_child)).collect()
-            })))
-        },
         // If this is a leaf, make a corresponding endpoint.
-        Attr(ref attr) => {
+        ProfileGraphAttribute(ref attr) => {
             Rc::new(RefCell::new(DeviceTreeEndpoint(DeviceEndpoint{
                 attribute: root.clone(),
                 // get the default value from the attribute to initialize
-                value: Cell::new(attr.default)
+                value: Cell::new(attr.default),
             })))
-        }
+        },
+        // If this is a profile branch, recursively construct its subtree.
+        // Recursively collect all children into a vector.
+        ProfileGraphBranch(ref pb) => {
+            Rc::new(RefCell::new(DeviceTreeBranch(DeviceBranch {
+                profile_branch: Some(root.clone()),
+                children: pb.children.iter().map(|pb_child|
+                	device_subtree_from_profile_subtree(pb_child)).collect(),
+            })))
+        },
+        // TODO deduplicate with respect to ProfileGraphBranch. (match syntax?)
+        // If this is a profile switch, recursively construct its subtree.
+        // Recursively collect all children into a vector.
+        ProfileGraphSwitch(ref pb) => {
+            Rc::new(RefCell::new(DeviceTreeSwitch(DeviceSwitch {
+                profile_branch: Some(root.clone()),
+                children: pb.children.iter().map(|pb_child|
+                	device_subtree_from_profile_subtree(pb_child)).collect(),
+                selection: pb.default_selection,
+            })))
+        },
     }
 }
 

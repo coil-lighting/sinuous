@@ -26,7 +26,7 @@ pub fn create_dimmer() {
         date: "June 7, 2014".to_string(),
         version: 0,
         chan_alloc: DmxChannelCount(1),
-        root: Rc::new(RefCell::new(Attr(Attribute {
+        root: Rc::new(RefCell::new(ProfileGraphAttribute(Attribute {
             name: "Dimmer".to_string(),
             nickname: "Dim".to_string(),
             effect: (Dimmer, ColorspaceI, Value),
