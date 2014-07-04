@@ -188,20 +188,12 @@ pub struct DeviceSwitch {
 
 impl DeviceSwitch {
     pub fn render(&self, buffer: &mut[u8]) {
-    	// foo FIXME error: cannot index a value of type `collections::vec::Vec<alloc::rc::Rc<core::cell::RefCell<device::DeviceTree>>>`
-        // let child = self.children[self.selection];
-        // stupid workaround:
-        let mut i: uint = 0;
-        for child in self.children.iter() {
-        	if i == self.selection {
-		        match *child.borrow() {
-		            DeviceTreeEndpoint(ref d) => d.render(buffer),
-		            DeviceTreeBranch(ref d) => d.render(buffer),
-		            DeviceTreeSwitch(ref d) => d.render(buffer),
-		        };
-		    }
-	        i = i + 1;
-	    }
+        let child = self.children.get(self.selection);
+        match *child.borrow() {
+            DeviceTreeEndpoint(ref d) => d.render(buffer),
+            DeviceTreeBranch(ref d) => d.render(buffer),
+            DeviceTreeSwitch(ref d) => d.render(buffer),
+        };
     }
 }
 
