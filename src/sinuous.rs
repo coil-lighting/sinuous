@@ -37,6 +37,7 @@ mod dmx;
 mod effect;
 mod mixer;
 mod numeric;
+mod profile;
 mod range;
 mod render;
 mod test_dimmer;

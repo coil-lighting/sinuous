@@ -10,6 +10,7 @@ use device::*;
 use dmx::*;
 use effect::*;
 use numeric::limit_unipolar_unit_f64_to_u8;
+use profile::*;
 use render::*;
 use topo::*;
 
