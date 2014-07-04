@@ -67,7 +67,7 @@ pub fn create_dimmer() {
     }
 
     let t0: f64 = precise_time_s();
-    let trial_ct = 10000;
+    let trial_ct = 100000;
 
     let mut write_ct: uint = 0;
     for n in range(0, trial_ct) {

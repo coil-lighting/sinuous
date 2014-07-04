@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+rm sinuous
+rustc -O sinuous.rs
+./sinuous
